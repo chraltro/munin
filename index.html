@@ -118,9 +118,6 @@
             <aside class="editor-panel" id="editorPanel">
                 <div class="editor-header">
                     <input type="text" id="noteTitle" placeholder="Untitled Note">
-                    <button id="closeEditorBtn" class="icon-btn">
-                        <i class="fas fa-times"></i>
-                    </button>
                 </div>
                 <div class="editor-toolbar">
                     <div class="toolbar-group">
@@ -146,7 +143,10 @@
                 </div>
                 <textarea id="noteEditor" placeholder="Write your note in Markdown..."></textarea>
                 <div id="notePreview" class="note-preview"></div>
-                <button id="toggleHeaderBtn" class="fab-btn" style="display: none;">
+                <button id="closeEditorBtn" class="icon-btn" title="Close Editor">
+                    <i class="fas fa-times"></i>
+                </button>
+                <button id="toggleHeaderBtn" class="fab-btn" title="Toggle Header" style="display: none;">
                     <i class="fas fa-expand-alt"></i>
                 </button>
             </aside>

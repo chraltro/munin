@@ -118,7 +118,6 @@ function initializeApp() {
     loadTypography();
     checkAutoLogin();
     setupEventListeners();
-    setupAnimations();
 }
 
 function checkSecurityWarning() {
@@ -127,20 +126,6 @@ function checkSecurityWarning() {
         const warning = document.getElementById('securityWarning');
         if (warning) warning.style.display = 'flex';
     }
-}
-
-function setupAnimations() {
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.classList.add('visible');
-            }
-        });
-    }, { threshold: 0.1 });
-
-    document.querySelectorAll('.note-card').forEach(card => {
-        observer.observe(card);
-    });
 }
 
 function checkAutoLogin() {
@@ -1086,6 +1071,7 @@ function openNote(note) {
     
     if (window.innerWidth <= 768) {
         elements.toggleHeaderBtn.style.display = 'flex';
+        elements.closeEditorBtn.style.display = 'flex';
     }
 }
 
@@ -1108,6 +1094,7 @@ function closeEditor() {
     elements.saveNoteBtn.classList.remove('is-dirty');
 
     elements.toggleHeaderBtn.style.display = 'none';
+    elements.closeEditorBtn.style.display = 'none';
     elements.editorPanel.classList.remove('header-collapsed');
 }
 

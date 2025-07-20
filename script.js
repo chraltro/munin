@@ -26,7 +26,9 @@ let state = {
     isEmbeddingStale: false,
     originalNoteContent: '',
     isSemanticSearching: false,
-    saveTimeout: null
+    saveTimeout: null,
+    currentServings: null,
+    baseServings: null
 };
 
 const THEMES = [
@@ -46,6 +48,14 @@ const THEMES = [
     { name: 'Sandstone', className: 'theme-sandstone', gradient: ['#ca8a04', '#b45309'] },
     { name: 'Monochrome', className: 'theme-monochrome', gradient: ['#a1a1aa', '#71717a'] },
     { name: 'Bronze', className: 'theme-bronze', gradient: ['#b45309', '#92400e'] },
+    { name: 'Night', className: 'theme-night', gradient: ['#8b5cf6', '#a78bfa'] },
+    { name: 'Black', className: 'theme-black', gradient: ['#a3a3a3', '#d4d4d4'] },
+    { name: 'White', className: 'theme-white', gradient: ['#3b82f6', '#60a5fa'] },
+    { name: 'Light Grey', className: 'theme-light-grey', gradient: ['#475569', '#64748b'] },
+    { name: 'Coral', className: 'theme-coral', gradient: ['#ef4444', '#f87171'] },
+    { name: 'Indigo', className: 'theme-indigo', gradient: ['#6366f1', '#818cf8'] },
+    { name: 'Emerald', className: 'theme-emerald', gradient: ['#10b981', '#34d399'] },
+    { name: 'Gold', className: 'theme-gold', gradient: ['#f59e0b', '#fbbf24'] },
 ];
 
 const FONTS = [
@@ -107,16 +117,20 @@ const elements = {
     fontSizeValue: document.getElementById('fontSizeValue'),
     lineHeightSlider: document.getElementById('lineHeightSlider'),
     lineHeightValue: document.getElementById('lineHeightValue'),
-    saveStatus: document.getElementById('saveStatus')
+    saveStatus: document.getElementById('saveStatus'),
+    recipeScaler: document.getElementById('recipeScaler'),
+    servingsInput: document.getElementById('servingsInput'),
+    servingsDecrement: document.getElementById('servingsDecrement'),
+    servingsIncrement: document.getElementById('servingsIncrement')
 };
 
 document.addEventListener('DOMContentLoaded', initializeApp);
 
-function initializeApp() {
+async function initializeApp() {
     checkSecurityWarning();
     loadTheme();
     loadTypography();
-    checkAutoLogin();
+    await checkAutoLogin();
     setupEventListeners();
 }
 
@@ -128,7 +142,7 @@ function checkSecurityWarning() {
     }
 }
 
-function checkAutoLogin() {
+async function checkAutoLogin() {
     const savedAuth = localStorage.getItem('chrisidian_auth');
     if (savedAuth) {
         const auth = JSON.parse(savedAuth);
@@ -136,7 +150,7 @@ function checkAutoLogin() {
         state.githubToken = auth.githubToken;
         state.isAuthenticated = true;
         showMainApp();
-        loadData();
+        await loadData();
     }
 }
 
@@ -181,7 +195,8 @@ function setupEventListeners() {
     elements.loginForm.addEventListener('submit', handleLogin);
     elements.logoutBtn.addEventListener('click', handleLogout);
     elements.processBtn.addEventListener('click', processCommand);
-    elements.commandInput.addEventListener('keypress', handleCommandKeyPress);
+    elements.commandInput.addEventListener('keydown', handleCommandKeyPress);
+    elements.commandInput.addEventListener('input', autoResizeCommandInput);
     elements.newFolderBtn.addEventListener('click', createNewFolder);
     elements.newNoteBtn.addEventListener('click', createNewNote);
     elements.editModeBtn.addEventListener('click', () => setEditorMode('edit'));
@@ -199,6 +214,9 @@ function setupEventListeners() {
     elements.fontFamilySelector.addEventListener('change', handleFontChange);
     elements.fontSizeSlider.addEventListener('input', handleFontSizeChange);
     elements.lineHeightSlider.addEventListener('input', handleLineHeightChange);
+    elements.servingsDecrement.addEventListener('click', () => updateServings(-1));
+    elements.servingsIncrement.addEventListener('click', () => updateServings(1));
+    elements.servingsInput.addEventListener('change', handleServingsInputChange);
     elements.noteTitle.addEventListener('input', handleNoteChange);
     elements.noteEditor.addEventListener('input', handleNoteChange);
     elements.currentFolderName.addEventListener('click', handleFolderNameClick);
@@ -329,9 +347,16 @@ function showMainApp() {
 }
 
 function handleCommandKeyPress(e) {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+        e.preventDefault();
         processCommand();
     }
+}
+
+function autoResizeCommandInput() {
+    const textarea = elements.commandInput;
+    textarea.style.height = 'auto';
+    textarea.style.height = `${textarea.scrollHeight}px`;
 }
 
 function handleSearchInput() {
@@ -357,6 +382,109 @@ function handleFolderNameClick() {
     if (state.currentFolder !== 'All Notes' && !state.isSemanticSearching) {
         renameFolder(state.currentFolder);
     }
+}
+
+function updateServings(change) {
+    const currentVal = parseInt(elements.servingsInput.value, 10);
+    const newVal = Math.max(1, currentVal + change);
+    elements.servingsInput.value = newVal;
+    state.currentServings = newVal;
+    setEditorMode('preview');
+}
+
+function handleServingsInputChange(e) {
+    const newVal = Math.max(1, parseInt(e.target.value, 10) || state.baseServings);
+    e.target.value = newVal;
+    state.currentServings = newVal;
+    setEditorMode('preview');
+}
+
+function toFraction(decimal) {
+    if (decimal === Math.round(decimal)) {
+        return decimal.toString();
+    }
+    
+    const tolerance = 0.001;
+    const whole = Math.floor(decimal);
+    const fracDecimal = decimal - whole;
+
+    if (fracDecimal < tolerance) {
+        return whole.toString();
+    }
+
+    const commonFractions = [
+        [1, 8], [1, 4], [1, 3], [3, 8], [1, 2], [5, 8], [2, 3], [3, 4], [7, 8]
+    ];
+
+    for (const [num, den] of commonFractions) {
+        if (Math.abs(fracDecimal - (num / den)) < tolerance) {
+            return (whole > 0 ? whole + ' ' : '') + `${num}/${den}`;
+        }
+    }
+    
+    return parseFloat(decimal.toFixed(1)).toString().replace('.', ',');
+}
+
+function parseQuantity(quantityStr) {
+    quantityStr = quantityStr.trim();
+    const normalizedQuantityStr = quantityStr.replace(',', '.');
+
+    if (normalizedQuantityStr.includes(' ')) {
+        const parts = normalizedQuantityStr.split(' ');
+        if (parts.length === 2 && parts[1].includes('/')) {
+            const whole = parseInt(parts[0], 10);
+            const fracParts = parts[1].split('/');
+            const num = parseInt(fracParts[0], 10);
+            const den = parseInt(fracParts[1], 10);
+            if (!isNaN(whole) && !isNaN(num) && den) {
+                return whole + num / den;
+            }
+        }
+    } else if (normalizedQuantityStr.includes('/')) {
+        const parts = normalizedQuantityStr.split('/');
+        if (parts.length === 2) {
+            const num = parseInt(parts[0], 10);
+            const den = parseInt(parts[1], 10);
+            if (!isNaN(num) && den) {
+                return num / den;
+            }
+        }
+    }
+    const parsed = parseFloat(normalizedQuantityStr);
+    return isNaN(parsed) ? null : parsed;
+}
+
+function scaleRecipeContent(content, baseServings, newServings) {
+    if (!baseServings || !newServings || baseServings === newServings) {
+        return content;
+    }
+    const scaleFactor = newServings / baseServings;
+
+    return content.split('\n').map(line => {
+        const lineMatch = line.match(/^(\s*[-*+]\s*|\s*\d+\.\s+)(.*)/);
+        if (!lineMatch) {
+            return line;
+        }
+
+        const prefix = lineMatch[1];
+        let restOfLine = lineMatch[2];
+        
+        const quantityMatch = restOfLine.match(/^(\d+\s+\d+\/\d+|\d+\/\d+|\d*[,.]?\d+)/);
+        
+        if (quantityMatch) {
+            const quantityStr = quantityMatch[0];
+            const originalAmount = parseQuantity(quantityStr);
+            
+            if (originalAmount !== null) {
+                const unitAndIngredient = restOfLine.substring(quantityStr.length);
+                let newAmount = originalAmount * scaleFactor;
+                let formattedAmount = toFraction(newAmount);
+                return `${prefix}${formattedAmount}${unitAndIngredient}`;
+            }
+        }
+        
+        return line;
+    }).join('\n');
 }
 
 function toggleEditorHeader() {
@@ -633,7 +761,12 @@ TOOL-USE INSTRUCTIONS:
 2. tool: "CREATE_NOTE"
    - Use this for commands that clearly ask to save new information.
    - **CRITICAL**: The 'content' you generate MUST be well-formatted markdown. Use headings, lists, bold text, and newlines (\`\\n\`) to make the note clear and readable.
-   - args: { "title": "New Note Title", "content": "Markdown content...", "folder": "Folder Name", "newFolder": true/false }
+   - **If the note is a RECIPE, you MUST follow these rules**:
+     1. Set 'folder' to "Recipes".
+     2. Add a 'servings' argument (e.g., \'"servings": 4\').
+     3. For every ingredient in the markdown 'content', the line MUST be a list item starting with a numeric quantity (e.g., \`- 250g flour\`, \`* 2 eggs\`). This is required for scaling.
+   - **args for a regular note**: { "title": "...", "content": "...", "folder": "...", "newFolder": true/false }
+   - **args for a RECIPE**: { "title": "...", "content": "...", "folder": "Recipes", "servings": 4, "newFolder": false }
 
 3. tool: "UPDATE_NOTE"
    - Use this to modify an existing note based on the 'Relevant Existing Notes'.
@@ -675,6 +808,7 @@ Now, analyze all the provided data and return the single JSON object for the cor
         
         await executeAITool(tool, args);
         elements.commandInput.value = '';
+        autoResizeCommandInput();
 
     } catch (error) {
         console.error('Full error object:', error);
@@ -703,6 +837,10 @@ async function executeAITool(tool, args) {
             if (!args || !args.title || !args.content || !args.folder) {
                 throw new Error("AI chose CREATE_NOTE with incomplete arguments.");
             }
+            if (args.folder === 'Recipes' && !args.servings) {
+                showNotification("AI created a recipe without servings. Defaulting to 4.", "warning");
+                args.servings = 4;
+            }
             
             if (args.newFolder && !state.folders.includes(args.folder)) {
                 state.folders.push(args.folder);
@@ -716,7 +854,8 @@ async function executeAITool(tool, args) {
                 folder: args.folder,
                 created: new Date().toISOString(),
                 modified: new Date().toISOString(),
-                embedding: await callEmbeddingAPI(`${args.title}\n${args.content}`)
+                embedding: await callEmbeddingAPI(`${args.title}\n${args.content}`),
+                servings: args.folder === 'Recipes' ? args.servings : undefined
             };
             
             state.notes.push(newNote);
@@ -1061,6 +1200,17 @@ function openNote(note) {
     elements.noteTitle.value = note.title;
     elements.noteEditor.value = note.content;
     state.originalNoteContent = note.content;
+
+    if (note.folder === 'Recipes' && note.servings) {
+        state.baseServings = note.servings;
+        state.currentServings = note.servings;
+        elements.servingsInput.value = note.servings;
+        elements.recipeScaler.style.display = 'flex';
+    } else {
+        elements.recipeScaler.style.display = 'none';
+        state.baseServings = null;
+        state.currentServings = null;
+    }
     
     state.isNoteDirty = false;
     state.isEmbeddingStale = false;
@@ -1084,6 +1234,10 @@ function closeEditor() {
         };
         performBackgroundSave(noteToSave);
     }
+
+    elements.recipeScaler.style.display = 'none';
+    state.baseServings = null;
+    state.currentServings = null;
 
     elements.editorPanel.classList.remove('is-open');
     state.currentNote = null;
@@ -1109,7 +1263,12 @@ function setEditorMode(mode) {
         elements.notePreview.style.display = 'block';
         elements.editModeBtn.classList.remove('active');
         elements.previewModeBtn.classList.add('active');
-        elements.notePreview.innerHTML = renderSanitizedHTML(elements.noteEditor.value);
+        
+        let contentToRender = elements.noteEditor.value;
+        if (state.currentNote && state.currentNote.folder === 'Recipes' && state.baseServings) {
+            contentToRender = scaleRecipeContent(contentToRender, state.baseServings, state.currentServings);
+        }
+        elements.notePreview.innerHTML = renderSanitizedHTML(contentToRender);
     }
 }
 

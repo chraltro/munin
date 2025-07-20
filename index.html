@@ -111,7 +111,7 @@
 
                 <div class="input-bar">
                     <div class="input-container">
-                        <input type="text" id="commandInput" placeholder='Try: "Add a new idea: ..." or "Who was..."'>
+                        <textarea id="commandInput" placeholder='Try: "Add a new idea: ..." or "Who was..."' rows="1"></textarea>
                         <button id="processBtn" class="process-btn">
                             <i class="fas fa-magic"></i>
                             <span>Process</span>
@@ -134,6 +134,12 @@
                             <i class="fas fa-eye"></i>
                             <span>Preview</span>
                         </button>
+                    </div>
+                    <div id="recipeScaler" class="toolbar-group" style="display: none;">
+                        <span class="servings-label"><i class="fas fa-users"></i></span>
+                        <button id="servingsDecrement" class="toolbar-btn" title="Decrease">-</button>
+                        <input type="number" id="servingsInput" class="servings-input" min="1" step="1">
+                        <button id="servingsIncrement" class="toolbar-btn" title="Increase">+</button>
                     </div>
                     <div class="toolbar-group">
                         <button id="saveNoteBtn" class="toolbar-btn primary">

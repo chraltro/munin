@@ -1328,7 +1328,7 @@ async function deleteTag(tagName) {
     updateSaveStatus('Tag deleted');
 }
 
-async function createNewNote(content = null, title = null, tags = []) {
+async function createNewNote(content = null, title = null, tags = [], servings = undefined) {
     const newContent = content || '# New Note\n\nStart writing...';
     const newTitle = title || 'New Note';
     
@@ -1342,7 +1342,8 @@ async function createNewNote(content = null, title = null, tags = []) {
         tags: tags,
         created: new Date().toISOString(),
         modified: new Date().toISOString(),
-        embedding: newEmbedding
+        embedding: newEmbedding,
+        servings: servings
     };
     
     state.notes.push(newNote);
@@ -1388,7 +1389,7 @@ function openTemplateModal() {
             if (newTitle === 'Meeting Minutes') {
                 newTitle += ` - ${new Date().toLocaleDateString()}`;
             }
-            createNewNote(template.content, newTitle, template.tags);
+            createNewNote(template.content, newTitle, template.tags, template.servings);
             elements.templateModal.style.display = 'none';
         };
         elements.templateList.appendChild(templateCard);
@@ -1418,7 +1419,8 @@ async function ensureTemplatesExist() {
                 tags: template.tags,
                 created: new Date().toISOString(),
                 modified: new Date().toISOString(),
-                embedding: await callEmbeddingAPI(`${template.title}\n${template.content}`)
+                embedding: await callEmbeddingAPI(`${template.title}\n${template.content}`),
+                servings: template.servings
             };
             state.notes.push(newTemplateNote);
             madeChanges = true;

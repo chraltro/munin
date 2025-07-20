@@ -13,6 +13,7 @@ function getTemplates() {
         {
             title: 'Recipe Template',
             tags: ['Recipe'],
+            servings: 4,
             content: `# {{Recipe Title}}\n\n> A short description of the recipe.\n\n**Prep time:** \n**Cook time:** \n\n## Ingredients\n- 1 cup Flour\n- 2 large Eggs\n\n## Instructions\n1. First step...\n2. Second step...\n`
         }
     ];

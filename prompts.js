@@ -35,7 +35,6 @@ TOOL-USE INSTRUCTIONS:
 
      > A short description of the recipe.
 
-     **Servings:** {{Number}}
      **Prep time:** {{Time}}
      **Cook time:** {{Time}}
 

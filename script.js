@@ -232,6 +232,7 @@ function setupEventListeners() {
     elements.noteEditor.addEventListener('input', handleNoteChange);
     elements.noteTagInput.addEventListener('keydown', handleTagInput);
     elements.currentFolderName.addEventListener('click', handleFolderNameClick);
+    elements.notePreview.addEventListener('change', handleCheckboxChangeInPreview);
 
     setupModalEventListeners();
     setupNoteLinkHandlers();
@@ -753,9 +754,11 @@ async function findSemanticallyRelevantNotes(command, maxNotes = 5) {
 }
 
 function renderSanitizedHTML(markdownContent) {
-    let html = marked.parse(markdownContent);
+    let html = marked.parse(markdownContent, { gfm: true });
     html = html.replace(/href="app:\/\/note\/(\d+)"/g, 'href="#" data-note-id="$1"');
-    return DOMPurify.sanitize(html, { ADD_ATTR: ['data-note-id'] });
+    // Allow checklists to be interactive by removing the 'disabled' attribute.
+    html = html.replace(/ disabled=""/g, '');
+    return DOMPurify.sanitize(html, { ADD_ATTR: ['data-note-id', 'class'] });
 }
 
 async function processCommand() {
@@ -1851,6 +1854,37 @@ async function handleTagDrop(e) {
         } else {
             showNotification(`Note already has tag "#${tagName}"`);
         }
+    }
+}
+
+function handleCheckboxChangeInPreview(e) {
+    if (e.target.tagName !== 'INPUT' || e.target.type !== 'checkbox' || !e.target.closest('.task-list-item')) {
+        return;
+    }
+    
+    // Find the index of the checkbox that was clicked.
+    const checkboxes = Array.from(elements.notePreview.querySelectorAll('.task-list-item input[type="checkbox"]'));
+    const clickedIndex = checkboxes.indexOf(e.target);
+    
+    if (clickedIndex === -1) return;
+    
+    let content = elements.noteEditor.value;
+    
+    const taskRegex = /^- \[( |x)\]/gim;
+    let matchCount = 0;
+    
+    const newContent = content.replace(taskRegex, (match) => {
+        if (matchCount === clickedIndex) {
+            matchCount++;
+            return e.target.checked ? '- [x]' : '- [ ]';
+        }
+        matchCount++;
+        return match;
+    });
+    
+    if (content !== newContent) {
+        elements.noteEditor.value = newContent;
+        handleNoteChange();
     }
 }
 

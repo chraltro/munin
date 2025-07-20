@@ -1154,6 +1154,14 @@ body {
     color: var(--text-primary);
 }
 
+.note-preview li.task-list-item {
+    list-style-type: none;
+}
+
+.note-preview input[type="checkbox"] {
+    margin-right: 0.5em;
+}
+
 #closeEditorBtn {
     display: none;
     position: absolute;

@@ -795,14 +795,12 @@ html, .theme-dusk {
 }
 
 .theme-switcher-container {
-    padding: 1rem 0.5rem;
-    border-top: 1px solid var(--border);
-    display: flex;
-    justify-content: center;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
     gap: 0.75rem;
-    flex-wrap: wrap;
-    max-width: 150px;
-    margin: 0 auto;
+    padding: 1rem;
+    justify-items: center;
+    border-top: 1px solid var(--border);
 }
 
 .theme-swatch {

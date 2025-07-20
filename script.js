@@ -1234,6 +1234,9 @@ function renderNotes(notesToShow = null, animate = true) {
         notesToDisplay.forEach((note, index) => {
             const noteListItem = document.createElement('div');
             noteListItem.className = 'note-list-item';
+            if (index % 2 === 1) {
+                noteListItem.classList.add('alternate-row');
+            }
             noteListItem.draggable = true;
             noteListItem.dataset.noteId = note.id;
 

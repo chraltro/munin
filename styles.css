@@ -650,11 +650,6 @@ body {
 .view-switcher .icon-btn {
     border-radius: 0;
     border: none;
-    border-right: 1px solid var(--border);
-}
-
-.view-switcher .icon-btn:last-child {
-    border-right: none;
 }
 
 .view-switcher .icon-btn.active {
@@ -746,8 +741,7 @@ body {
 .note-list-item {
     display: grid;
     grid-template-columns: 2.5fr 1.5fr 1fr 1fr;
-    background: var(--bg-secondary);
-    border-bottom: 1px solid var(--border);
+    background-color: var(--bg-secondary);
     padding: 0.75rem 1.5rem;
     cursor: pointer;
     transition: var(--transition-fast);
@@ -757,8 +751,8 @@ body {
     align-items: center;
 }
 
-.notes-list.list-view .note-list-item:last-child {
-    border-bottom: none;
+.note-list-item.alternate-row {
+    background-color: var(--bg-primary);
 }
 
 .note-list-item.visible {

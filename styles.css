@@ -36,6 +36,13 @@
     box-sizing: border-box;
 }
 
+button,
+input,
+textarea,
+select {
+    font-family: inherit;
+}
+
 body {
     font-family: var(--user-font-family);
     font-weight: 400;

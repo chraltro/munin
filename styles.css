@@ -213,6 +213,7 @@ body {
     height: 100vh;
 }
 
+.app-container.editor-fullscreen .app-header,
 .app-container.editor-fullscreen .sidebar,
 .app-container.editor-fullscreen .notes-area {
     display: none;
@@ -1447,8 +1448,8 @@ body {
 #closeEditorBtn {
     display: none;
     position: absolute;
-    top: 1rem;
-    right: 1rem;
+    top: 1.5rem;
+    right: 1.5rem;
     z-index: 501;
 }
 

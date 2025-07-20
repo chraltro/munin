@@ -2119,6 +2119,7 @@ function populateAiActionsMenu() {
         </div>
         <div class="menu-separator"></div>
         <button data-action="cleanup" title="Apply best practice formatting or match template">Clean Up</button>
+        <button data-action="add_tags" title="Suggest and add relevant tags to this note">Add Tags</button>
     `;
 
     // Add positioning logic for nested dropdowns
@@ -2212,6 +2213,11 @@ async function performContextualAIAction(action, tone) {
         isFullNoteAction = true;
     }
     
+    // The 'add_tags' action always applies to the full note content.
+    if (action === 'add_tags') {
+        isFullNoteAction = true;
+    }
+    
     // If we're operating on the full note, update selection and text content accordingly.
     if (isFullNoteAction) {
         editor.selectionStart = 0;
@@ -2227,6 +2233,10 @@ async function performContextualAIAction(action, tone) {
     const noteContext = { isRecipe: noteIsRecipe };
     if (noteIsRecipe) {
         noteContext.recipeTemplate = getTemplates().find(t => t.title === 'Recipe Template').content;
+    }
+    if (action === 'add_tags') {
+        noteContext.currentTags = state.currentNote.tags || [];
+        noteContext.allTags = state.allTags;
     }
     
     const prompt = getContextualPrompt(action, tone, selectedText, noteContext);
@@ -2260,6 +2270,34 @@ async function performContextualAIAction(action, tone) {
                 setEditorMode('preview'); // Re-render preview to show changes
             } else {
                 throw new Error("AI response for recipe cleanup was missing 'content' or 'servings'.");
+            }
+        } else if (action === 'add_tags') {
+            const jsonMatch = responseText.match(/\[[\s\S]*\]/);
+            if (!jsonMatch) {
+                console.error("Add Tags did not return JSON array. Raw response:", responseText);
+                throw new Error("AI did not respond with a valid JSON array for adding tags.");
+            }
+            
+            const suggestedTags = JSON.parse(jsonMatch[0]);
+
+            if (Array.isArray(suggestedTags)) {
+                const currentTags = new Set(state.currentNote.tags || []);
+                suggestedTags.forEach(tag => currentTags.add(tag));
+                
+                state.currentNote.tags = Array.from(currentTags).sort((a, b) => a.localeCompare(b));
+                
+                renderNoteTags();
+                handleNoteChange(); // Triggers debounced save
+                
+                // If any of the new tags are actually new to the system, update global tags
+                const newSystemTags = suggestedTags.filter(t => !state.allTags.includes(t));
+                if (newSystemTags.length > 0) {
+                    updateAllTags();
+                    renderTags();
+                }
+                 showNotification('Tags added successfully!', 'success');
+            } else {
+                 throw new Error("AI response for adding tags was not a JSON array.");
             }
         } else {
             replaceSelectedText(responseText);

@@ -97,6 +97,24 @@ Now, provide the JSON object.`;
             } else {
                 return `Clean up and format the following text using Markdown best practices (headings, lists, bolding, etc.) to improve its readability. Only return the improved text, without any explanation or preamble:\n\n---\n${selectedText}`;
             }
+        case 'add_tags':
+            return `You are a tagging expert for a note-taking app. Analyze the following note content to suggest relevant tags.
+    
+The note's current tags are: ${JSON.stringify(noteContext.currentTags)}
+All available tags in the system are: ${JSON.stringify(noteContext.allTags)}
+
+Your task is to identify and suggest new, relevant tags for the note.
+- You MUST prioritize using relevant tags from the "all available tags" list.
+- You can create AT MOST one (1) new tag if, and only if, it is essential and provides significant value. Do not create new tags that are just slight variations of existing ones.
+- Do NOT suggest any tags that are already assigned to the note.
+- You MUST return your answer as a single, flat JSON array of strings. For example: ["suggested-tag-1", "new-tag-2"]
+
+---
+NOTE CONTENT TO ANALYZE:
+${selectedText}
+---
+
+Now, provide the JSON array of suggested tags.`;
         default:
             return '';
     }

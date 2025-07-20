@@ -126,11 +126,11 @@ const elements = {
 
 document.addEventListener('DOMContentLoaded', initializeApp);
 
-function initializeApp() {
+async function initializeApp() {
     checkSecurityWarning();
     loadTheme();
     loadTypography();
-    checkAutoLogin();
+    await checkAutoLogin();
     setupEventListeners();
 }
 
@@ -142,7 +142,7 @@ function checkSecurityWarning() {
     }
 }
 
-function checkAutoLogin() {
+async function checkAutoLogin() {
     const savedAuth = localStorage.getItem('chrisidian_auth');
     if (savedAuth) {
         const auth = JSON.parse(savedAuth);
@@ -150,7 +150,7 @@ function checkAutoLogin() {
         state.githubToken = auth.githubToken;
         state.isAuthenticated = true;
         showMainApp();
-        loadData();
+        await loadData();
     }
 }
 

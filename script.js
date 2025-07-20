@@ -2134,12 +2134,16 @@ function populateAiActionsMenu() {
 }
 
 function handleSelectionChange() {
-    if (document.activeElement !== elements.noteEditor) {
+    // The button's state should only depend on whether there is a selection in the editor,
+    // not whether the editor has focus. This prevents a race condition where clicking the button
+    // causes the editor to lose focus and disable the button before the click event fires.
+    if (state.currentNote) {
+        const selection = elements.noteEditor.value.substring(elements.noteEditor.selectionStart, elements.noteEditor.selectionEnd);
+        elements.aiActionsBtn.disabled = selection.trim().length < 10;
+    } else {
+        // If no note is open, the button should definitely be disabled.
         elements.aiActionsBtn.disabled = true;
-        return;
     }
-    const selection = elements.noteEditor.value.substring(elements.noteEditor.selectionStart, elements.noteEditor.selectionEnd);
-    elements.aiActionsBtn.disabled = selection.trim().length < 10;
 }
 
 function handleAiActionClick(e) {

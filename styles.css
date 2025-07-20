@@ -273,7 +273,6 @@ body {
     color: var(--text-secondary);
     cursor: pointer;
     transition: var(--transition);
-    font-size: 0.875rem;
 }
 
 .logout-btn:hover {
@@ -733,7 +732,6 @@ body {
     color: var(--text-secondary);
     cursor: pointer;
     transition: var(--transition);
-    font-size: 0.875rem;
     justify-content: center;
 }
 

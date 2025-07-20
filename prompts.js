@@ -64,3 +64,40 @@ TOOL-USE INSTRUCTIONS:
 ---
 Now, analyze all the provided data and return the single JSON object for the correct tool call. Do not include any other text or explanation.`;
 }
+
+function getContextualPrompt(action, tone, selectedText, noteContext) {
+    switch (action) {
+        case 'summarize':
+            return `Summarize the following text in a concise paragraph:\n\n---\n${selectedText}`;
+        case 'expand':
+            return `Expand on the following points, providing more detail and explanation. Format the output as a continuation of the text:\n\n---\n${selectedText}`;
+        case 'fix':
+            return `Correct any spelling mistakes and fix grammatical errors in the following text. Only return the corrected text, without any explanation or preamble:\n\n---\n${selectedText}`;
+        case 'tone':
+            return `Rewrite the following text in a ${tone} tone. Only return the rewritten text, without any explanation or preamble:\n\n---\n${selectedText}`;
+        case 'cleanup':
+            if (noteContext.isRecipe) {
+                return `You are a text formatting expert. A user has provided recipe text that needs to be cleaned up to match a template.
+Your task is to reformat the text and also determine the number of servings.
+You MUST respond with a single JSON object with two keys: "servings" (an integer) and "content" (the full, reformatted recipe in Markdown).
+Infer the servings from the text if possible, otherwise make a sensible guess (e.g., 4).
+The 'content' you generate MUST follow the provided recipe template. Ingredient lines MUST start with a list marker and a quantity.
+Do NOT include a 'Servings' line in the markdown content itself.
+
+---
+USER-PROVIDED TEXT TO CLEAN UP:
+${selectedText}
+
+---
+MARKDOWN RECIPE TEMPLATE TO MATCH:
+${noteContext.recipeTemplate}
+---
+
+Now, provide the JSON object.`;
+            } else {
+                return `Clean up and format the following text using Markdown best practices (headings, lists, bolding, etc.) to improve its readability. Only return the improved text, without any explanation or preamble:\n\n---\n${selectedText}`;
+            }
+        default:
+            return '';
+    }
+}

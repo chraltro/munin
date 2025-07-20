@@ -2196,53 +2196,74 @@ function replaceSelectedText(replacement) {
 
 async function performContextualAIAction(action, tone) {
     const editor = elements.noteEditor;
-    let selectedText = editor.value.substring(editor.selectionStart, editor.selectionEnd).trim();
     const isPreview = elements.previewModeBtn.classList.contains('active');
+    
+    let isFullNoteAction = false;
 
-    if (!selectedText && isPreview) {
+    // In preview mode, there's no selection, so actions apply to the full note.
+    if (isPreview && editor.selectionStart === editor.selectionEnd) {
+        isFullNoteAction = true;
+    }
+    
+    let selectedText = editor.value.substring(editor.selectionStart, editor.selectionEnd).trim();
+
+    // The 'cleanup' action should also work on the whole note if no text is selected in edit mode.
+    if (!selectedText && action === 'cleanup') {
+        isFullNoteAction = true;
+    }
+    
+    // If we're operating on the full note, update selection and text content accordingly.
+    if (isFullNoteAction) {
+        editor.selectionStart = 0;
+        editor.selectionEnd = editor.value.length;
         selectedText = editor.value.trim();
     }
-
+    
     if (!selectedText) return;
 
-    let prompt = '';
     showLoading(true, 'AI is working...');
 
-    switch (action) {
-        case 'summarize':
-            prompt = `Summarize the following text in a concise paragraph:\n\n---\n${selectedText}`;
-            break;
-        case 'expand':
-            prompt = `Expand on the following points, providing more detail and explanation. Format the output as a continuation of the text:\n\n---\n${selectedText}`;
-            break;
-        case 'fix':
-            prompt = `Correct any spelling mistakes and fix grammatical errors in the following text. Only return the corrected text, without any explanation or preamble:\n\n---\n${selectedText}`;
-            break;
-        case 'tone':
-            prompt = `Rewrite the following text in a ${tone} tone. Only return the rewritten text, without any explanation or preamble:\n\n---\n${selectedText}`;
-            break;
-        case 'cleanup':
-            const noteIsRecipe = state.currentNote && state.currentNote.folder === 'Recipes';
-            if (noteIsRecipe) {
-                const recipeTemplate = getTemplates().find(t => t.title === 'Recipe Template');
-                prompt = `You are a text formatting expert. Clean up the following user-provided recipe text to match the provided Markdown recipe template. It is crucial that you include the 'Servings' metadata from the template, inferring a sensible value if it's missing from the user's text. Retain all original information, just reformat it. Text to clean up:\n\n---\n${selectedText}\n\n---\nTemplate to match:\n${recipeTemplate.content}`;
-            } else {
-                 prompt = `Clean up and format the following text using Markdown best practices (headings, lists, bolding, etc.) to improve its readability. Only return the improved text, without any explanation or preamble:\n\n---\n${selectedText}`;
-            }
-            break;
-        default:
-            showLoading(false);
-            return;
+    const noteIsRecipe = state.currentNote && state.currentNote.folder === 'Recipes';
+    const noteContext = { isRecipe: noteIsRecipe };
+    if (noteIsRecipe) {
+        noteContext.recipeTemplate = getTemplates().find(t => t.title === 'Recipe Template').content;
     }
+    
+    const prompt = getContextualPrompt(action, tone, selectedText, noteContext);
 
     try {
-        const result = await callGeminiAPI(prompt, { temperature: 0.5, maxOutputTokens: 2048 });
-        if (result && result.candidates && result.candidates.length > 0) {
-            const replacementText = result.candidates[0].content.parts[0].text;
-            replaceSelectedText(replacementText);
-        } else {
+        const result = await callGeminiAPI(prompt, { temperature: 0.2, maxOutputTokens: 4096 });
+        if (!result || !result.candidates || !result.candidates.length === 0) {
             throw new Error("AI did not return a valid response.");
         }
+
+        const responseText = result.candidates[0].content.parts[0].text;
+        
+        if (action === 'cleanup' && noteIsRecipe) {
+            const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) {
+                console.error("Recipe cleanup did not return JSON. Raw response:", responseText);
+                throw new Error("AI did not respond with valid JSON for recipe cleanup.");
+            }
+            
+            const { content, servings } = JSON.parse(jsonMatch[0]);
+            
+            if (content && servings) {
+                replaceSelectedText(content);
+                
+                // Update servings in state and UI
+                state.currentNote.servings = servings;
+                state.currentServings = servings;
+                state.baseServings = servings; // After cleanup, this is the new base
+                elements.servingsInput.value = servings;
+                handleNoteChange(); // Explicitly trigger save logic after updating servings
+            } else {
+                throw new Error("AI response for recipe cleanup was missing 'content' or 'servings'.");
+            }
+        } else {
+            replaceSelectedText(responseText);
+        }
+
     } catch (error) {
         console.error(`Error performing contextual action "${action}":`, error);
         showNotification(`AI action failed: ${error.message}`, 'error');

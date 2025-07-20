@@ -1717,8 +1717,40 @@ body {
     margin: 0;
     transform: scale(0.8);
     transition: var(--transition);
-    border: 2px solid var(--border);
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.1);
+    position: relative;
+    background-color: var(--swatch-bg-primary);
+    border: 2px solid var(--swatch-bg-secondary);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+}
+
+.theme-card-swatch::before,
+.theme-card-swatch::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    transition: var(--transition);
+    transform: translate(-50%, -50%);
+}
+
+.theme-card-swatch::before {
+    /* Accent color */
+    width: 50%;
+    height: 50%;
+    background-color: var(--swatch-primary);
+    top: 35%;
+    left: 35%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.theme-card-swatch::after {
+    /* Text color */
+    width: 25%;
+    height: 25%;
+    background-color: var(--swatch-text-primary);
+    top: 68%;
+    left: 68%;
+    border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .theme-card:hover .theme-card-swatch {

@@ -1960,14 +1960,13 @@ function renderThemeSwitchers() {
         const bgSecondary = style.getPropertyValue('--bg-secondary').trim();
         const primary = style.getPropertyValue('--primary').trim();
         const textPrimary = style.getPropertyValue('--text-primary').trim();
-        const borderLight = style.getPropertyValue('--border-light').trim();
 
-        const gradientCss = `conic-gradient(
-            ${bgPrimary} 0deg 144deg,
-            ${bgSecondary} 144deg 216deg,
-            ${primary} 216deg 288deg,
-            ${textPrimary} 288deg 360deg
-        )`;
+        const styleProps = `
+            --swatch-bg-primary: ${bgPrimary};
+            --swatch-bg-secondary: ${bgSecondary};
+            --swatch-primary: ${primary};
+            --swatch-text-primary: ${textPrimary};
+        `;
 
         const card = document.createElement('div');
         card.className = 'theme-card';
@@ -1976,7 +1975,7 @@ function renderThemeSwitchers() {
             applyTheme(theme.className);
             elements.themeModal.style.display = 'none';
         };
-        card.innerHTML = `<div class="theme-card-swatch" style="background-image: ${gradientCss}; border-color: ${borderLight};"></div>`;
+        card.innerHTML = `<div class="theme-card-swatch" style="${styleProps}"></div>`;
         elements.themeModalGrid.appendChild(card);
     });
 

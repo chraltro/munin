@@ -791,7 +791,7 @@ async function processCommand() {
     const command = elements.commandInput.value.trim();
     if (!command) return;
 
-    showLoading(true, 'Processing...');
+    updateSaveStatus('Processing...', 'saving');
     let rawResponseForDebugging = '';
 
     try {
@@ -835,8 +835,8 @@ async function processCommand() {
             console.error("The AI's last raw response before the error was:", `\n---START---\n${rawResponseForDebugging}\n---END---`);
         }
         showNotification(`An error occurred: ${error.message}`, 'error');
+        updateSaveStatus('Processing failed', 'error');
     } finally {
-        showLoading(false);
     }
 }
 
@@ -850,6 +850,7 @@ async function executeAITool(tool, args) {
             }
             elements.aiResponseOutput.innerHTML = renderSanitizedHTML(args.answer);
             elements.aiResponseModal.style.display = 'flex';
+            updateSaveStatus('Answer ready', 'success');
             break;
 
         case 'CREATE_NOTE':
@@ -946,7 +947,7 @@ async function performSemanticSearch() {
     const query = elements.searchInput.value.trim();
     if (!query) return;
 
-    showLoading(true, 'Semantic Search...');
+    updateSaveStatus('Searching...', 'saving');
     state.isSemanticSearching = true;
 
     try {
@@ -961,13 +962,14 @@ async function performSemanticSearch() {
         `;
         
         document.getElementById('clearSearchBtn').addEventListener('click', clearSemanticSearch);
+        updateSaveStatus('Search complete', 'success');
 
     } catch (error) {
         console.error("Error during semantic search:", error);
         showNotification("Semantic search failed. Please check the console.", 'error');
+        updateSaveStatus('Search failed', 'error');
         clearSemanticSearch();
     } finally {
-        showLoading(false);
     }
 }
 
@@ -2227,7 +2229,7 @@ async function performContextualAIAction(action, tone) {
     
     if (!selectedText) return;
 
-    showLoading(true, 'AI is working...');
+    updateSaveStatus('AI is working...', 'saving');
 
     const noteIsRecipe = state.currentNote && state.currentNote.folder === 'Recipes';
     const noteContext = { isRecipe: noteIsRecipe };
@@ -2268,6 +2270,7 @@ async function performContextualAIAction(action, tone) {
                 elements.servingsInput.value = servings;
                 handleNoteChange(); // Explicitly trigger save logic after updating servings
                 setEditorMode('preview'); // Re-render preview to show changes
+                updateSaveStatus('Recipe cleaned up', 'success');
             } else {
                 throw new Error("AI response for recipe cleanup was missing 'content' or 'servings'.");
             }
@@ -2295,7 +2298,7 @@ async function performContextualAIAction(action, tone) {
                     updateAllTags();
                     renderTags();
                 }
-                 showNotification('Tags added successfully!', 'success');
+                updateSaveStatus('Tags added', 'success');
             } else {
                  throw new Error("AI response for adding tags was not a JSON array.");
             }
@@ -2306,8 +2309,8 @@ async function performContextualAIAction(action, tone) {
     } catch (error) {
         console.error(`Error performing contextual action "${action}":`, error);
         showNotification(`AI action failed: ${error.message}`, 'error');
+        updateSaveStatus('AI action failed', 'error');
     } finally {
-        showLoading(false);
     }
 }
 

@@ -309,33 +309,46 @@ async function processCommand() {
     if (!command) return;
 
     showLoading(true);
+    let rawResponseForDebugging = ''; // Variable to hold the raw text for logging on error
 
     try {
-        const intentPrompt = `Analyze the user's command to determine the intent.
-The user can create, update, or delete notes, or ask a general question.
+        const intentPrompt = `You are a strict command interpreter. Your ONLY job is to classify the user's text into one of four categories: "CREATE", "UPDATE", "DELETE", or "QUERY".
+- Analyze the user's text to determine the intent.
+- You MUST respond with ONLY a single, valid JSON object and nothing else.
+- If the text is a command to manage notes, use the appropriate intent and find the "targetTitle" from the list if possible.
+- If the text is a question or a request for information, the intent is "QUERY".
+- If the intent is unclear or it's just a statement, you MUST default to "intent": "QUERY". Do not use "UNKNOWN".
 
 User Command: "${command}"
 Existing Note Titles: ${JSON.stringify(state.notes.map(n => n.title))}
 
-Respond in JSON.
-- For note actions, use "intent": "CREATE", "UPDATE", or "DELETE" and include "targetTitle".
-- For general questions, use "intent": "QUERY".
-- If the intent is unclear, use "intent": "UNKNOWN".
-
-Example for "delete my cookie recipe": {"intent": "DELETE", "targetTitle": "Chocolate Chip Cookie Recipe"}
-Example for "new idea for a cat-based dating app": {"intent": "CREATE", "targetTitle": null}
-Example for "what is the capital of France?": {"intent": "QUERY", "targetTitle": null}
+Examples:
+- User: "delete my cookie recipe" -> {"intent": "DELETE", "targetTitle": "Chocolate Chip Cookie Recipe"}
+- User: "new idea for a cat-based dating app" -> {"intent": "CREATE", "targetTitle": null}
+- User: "what is the capital of France?" -> {"intent": "QUERY", "targetTitle": null}
+- User: "do the pancakes need baking powder?" -> {"intent": "QUERY", "targetTitle": null}
 `;
-        const intentResult = await callGeminiAPI(intentPrompt, { temperature: 0.1, maxOutputTokens: 200 });
-        
+        const intentResult = await callGeminiAPI(intentPrompt, { temperature: 0.0, maxOutputTokens: 200 });
+
         if (!intentResult.candidates || intentResult.candidates.length === 0) {
-            throw new Error("AI response for intent detection is empty or invalid.");
+            console.error("FATAL: AI response contained no candidates. Full API Response:", intentResult);
+            throw new Error("AI response was empty or invalid. Check console for the full API response object.");
         }
-        
-        const intentText = intentResult.candidates[0].content.parts[0].text;
+
+        const intentCandidate = intentResult.candidates[0];
+        if (!intentCandidate.content || !intentCandidate.content.parts) {
+            console.error("FATAL: AI candidate is missing content. This is likely due to a safety filter. Full Candidate Object:", intentCandidate);
+            const reason = intentCandidate.finishReason || "UNKNOWN";
+            throw new Error(`AI did not return valid content. Reason: ${reason}. Check console for the full candidate object.`);
+        }
+
+        const intentText = intentCandidate.content.parts[0].text;
+        rawResponseForDebugging = intentText; // Store for logging in case of JSON error
+
         const intentJsonMatch = intentText.match(/\{[\s\S]*\}/);
         if (!intentJsonMatch) {
-            throw new Error("AI did not respond with valid JSON for intent detection.");
+            console.error("FATAL: Could not find a JSON object in the AI's response. Raw AI response text was:", `\n---START---\n${rawResponseForDebugging}\n---END---`);
+            throw new Error("AI did not respond with a valid JSON object for intent detection. Check console for its raw response.");
         }
         const { intent, targetTitle } = JSON.parse(intentJsonMatch[0]);
 
@@ -351,7 +364,14 @@ Example for "what is the capital of France?": {"intent": "QUERY", "targetTitle":
                 if (!mainResult.candidates || mainResult.candidates.length === 0) {
                     throw new Error("AI failed to provide an answer.");
                 }
-                const answerText = mainResult.candidates[0].content.parts[0].text;
+                const queryCandidate = mainResult.candidates[0];
+                if (!queryCandidate.content || !queryCandidate.content.parts) {
+                    console.error("AI response for query is missing content. It was likely blocked.", queryCandidate);
+                    const reason = queryCandidate.finishReason || "UNKNOWN";
+                    throw new Error(`AI did not return an answer. Reason: ${reason}. This may be due to safety filters.`);
+                }
+                const answerText = queryCandidate.content.parts[0].text;
+
                 aiResponseOutput.innerHTML = DOMPurify.sanitize(marked.parse(answerText));
                 aiResponseModal.style.display = 'flex';
                 break;
@@ -362,14 +382,24 @@ Example for "what is the capital of France?": {"intent": "QUERY", "targetTitle":
                     throw new Error(`Could not find a note titled "${targetTitle}" to update.`);
                 }
                 showLoading(true, 'Updating note...');
-                const updatePrompt = `You are an AI note editor. Update the following note based on the user's command. Respond with ONLY a single JSON object containing the full, updated "title" and "content".\n\nUser Command: "${command}"\n\nOriginal Note:\n---\n${JSON.stringify({title: noteToUpdate.title, content: noteToUpdate.content})}\n---`;
+                const updatePrompt = `You are an AI note editor. Update the following note based on the user's command. Respond with ONLY a single JSON object containing the full, updated "title" and "content".\n\nUser Command: "${command}"\n\nOriginal Note:\n---\n${JSON.stringify({ title: noteToUpdate.title, content: noteToUpdate.content })}\n---`;
                 const mainResult = await callGeminiAPI(updatePrompt, { temperature: 0.5, maxOutputTokens: 8192 });
-                if (!mainResult.candidates || mainResult.candidates.length === 0) throw new Error("AI response for note update is empty or invalid.");
+
+                if (!mainResult.candidates || !mainResult.candidates.length === 0) throw new Error("AI response for note update is empty or invalid.");
                 const candidate = mainResult.candidates[0];
-                if (candidate.finishReason && candidate.finishReason !== "STOP") throw new Error(`AI processing stopped unexpectedly. Reason: ${candidate.finishReason}.`);
+                if (!candidate.content || !candidate.content.parts) {
+                    console.error("AI response for update is missing content. It was likely blocked.", candidate);
+                    const reason = candidate.finishReason || "UNKNOWN";
+                    throw new Error(`AI did not return valid content for the update. Reason: ${reason}.`);
+                }
                 const mainText = candidate.content.parts[0].text;
+                rawResponseForDebugging = mainText;
+
                 const payloadMatch = mainText.match(/\{[\s\S]*\}/);
-                if (!payloadMatch) throw new Error("AI did not respond with valid JSON for the note update.");
+                if (!payloadMatch) {
+                    console.error("FATAL: Could not find a JSON object in the AI's update response. Raw AI response text was:", `\n---START---\n${rawResponseForDebugging}\n---END---`);
+                    throw new Error("AI did not respond with valid JSON for the note update. Check console for its raw response.");
+                }
                 const payload = JSON.parse(payloadMatch[0]);
                 const noteIndex = state.notes.findIndex(n => n.id === noteToUpdate.id);
                 state.notes[noteIndex].title = payload.title || noteToUpdate.title;
@@ -393,12 +423,22 @@ Example for "what is the capital of France?": {"intent": "QUERY", "targetTitle":
                 showLoading(true, 'Creating note...');
                 const createPrompt = `Process a user command to create a new note. Respond with ONLY a single, valid JSON object with "title", "content", and "folder". Choose the folder from this list: ${JSON.stringify(state.folders)}\n\nUser Command: "${command}"`;
                 const mainResult = await callGeminiAPI(createPrompt, { temperature: 0.7, maxOutputTokens: 8192 });
+
                 if (!mainResult.candidates || mainResult.candidates.length === 0) throw new Error("AI response for note creation is empty or invalid.");
                 const candidate = mainResult.candidates[0];
-                if (candidate.finishReason && candidate.finishReason !== "STOP") throw new Error(`AI processing stopped unexpectedly. Reason: ${candidate.finishReason}.`);
+                if (!candidate.content || !candidate.content.parts) {
+                    console.error("AI response for create is missing content. It was likely blocked.", candidate);
+                    const reason = candidate.finishReason || "UNKNOWN";
+                    throw new Error(`AI did not return valid content for the new note. Reason: ${reason}.`);
+                }
                 const mainText = candidate.content.parts[0].text;
+                rawResponseForDebugging = mainText;
+
                 const payloadMatch = mainText.match(/\{[\s\S]*\}/);
-                if (!payloadMatch) throw new Error("AI did not respond with valid JSON for the new note.");
+                if (!payloadMatch) {
+                    console.error("FATAL: Could not find a JSON object in the AI's create response. Raw AI response text was:", `\n---START---\n${rawResponseForDebugging}\n---END---`);
+                    throw new Error("AI did not respond with valid JSON for the new note. Check console for its raw response.");
+                }
                 const payload = JSON.parse(payloadMatch[0]);
                 const newNote = {
                     id: Date.now(),
@@ -414,7 +454,7 @@ Example for "what is the capital of France?": {"intent": "QUERY", "targetTitle":
                 break;
             }
             default:
-                alert("I'm not sure what you mean. Please try rephrasing your command, for example: 'create a new note about...', 'update my note titled...', 'delete the note about...', or ask a question like 'what is the tallest mountain?'.");
+                alert("The AI returned an unknown command. Please try rephrasing.");
                 break;
         }
 
@@ -425,8 +465,8 @@ Example for "what is the capital of France?": {"intent": "QUERY", "targetTitle":
         commandInput.value = '';
 
     } catch (error) {
-        console.error('Error processing command:', error);
-        alert(`Error: ${error.message}\n\nCheck the console (F12) for more details.`);
+        console.error('Full error object:', error);
+        alert(`An error occurred: ${error.message}\n\nPlease check the browser console (F12) for detailed logs.`);
     } finally {
         showLoading(false);
     }
@@ -456,8 +496,8 @@ function renderNotes() {
 
     const searchTerm = searchInput.value.toLowerCase().trim();
     if (searchTerm) {
-        notesToDisplay = notesToDisplay.filter(note => 
-            note.title.toLowerCase().includes(searchTerm) || 
+        notesToDisplay = notesToDisplay.filter(note =>
+            note.title.toLowerCase().includes(searchTerm) ||
             note.content.toLowerCase().includes(searchTerm)
         );
     }

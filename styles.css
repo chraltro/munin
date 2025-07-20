@@ -213,6 +213,16 @@ body {
     height: 100vh;
 }
 
+.app-container.editor-fullscreen .sidebar,
+.app-container.editor-fullscreen .notes-area {
+    display: none;
+}
+
+.app-container.editor-fullscreen .editor-panel {
+    width: 100%;
+    border-left-width: 0;
+}
+
 .app-header {
     background: rgba(var(--bg-secondary-rgb), 0.9);
     backdrop-filter: var(--blur);
@@ -864,6 +874,7 @@ body {
 
 .editor-header {
     padding: 1.5rem;
+    padding-right: 4rem;
     border-bottom: 1px solid var(--border);
     display: flex;
     gap: 1rem;
@@ -1767,7 +1778,7 @@ body {
 .desktop-only { display: block; }
 .mobile-only { display: none; }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
     body {
         height: auto;
         overflow-y: auto;
@@ -1971,10 +1982,6 @@ body {
     .editor-panel.is-open {
         transform: translateY(0);
         width: 100%;
-    }
-    
-    .editor-header {
-        padding-right: 4rem;
     }
     
     #closeEditorBtn {

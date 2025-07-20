@@ -503,9 +503,14 @@ function scaleRecipeContent(content, baseServings, newServings) {
 }
 
 function toggleEditorHeader() {
-    elements.editorPanel.classList.toggle('header-collapsed');
+    if (window.innerWidth > 1024) {
+        elements.mainApp.classList.toggle('editor-fullscreen');
+    } else {
+        elements.editorPanel.classList.toggle('header-collapsed');
+    }
+
     const icon = elements.toggleHeaderBtn.querySelector('i');
-    if (elements.editorPanel.classList.contains('header-collapsed')) {
+    if (elements.editorPanel.classList.contains('header-collapsed') || elements.mainApp.classList.contains('editor-fullscreen')) {
         icon.className = 'fas fa-compress-alt';
     } else {
         icon.className = 'fas fa-expand-alt';
@@ -1607,10 +1612,8 @@ function openNote(note) {
     setEditorMode('preview');
     populateAiActionsMenu();
     
-    if (window.innerWidth <= 768) {
-        elements.toggleHeaderBtn.style.display = 'flex';
-        elements.closeEditorBtn.style.display = 'flex';
-    }
+    elements.toggleHeaderBtn.style.display = 'flex';
+    elements.closeEditorBtn.style.display = 'flex';
 }
 
 function closeEditor() {
@@ -1643,6 +1646,7 @@ function closeEditor() {
     elements.toggleHeaderBtn.style.display = 'none';
     elements.closeEditorBtn.style.display = 'none';
     elements.editorPanel.classList.remove('header-collapsed');
+    elements.mainApp.classList.remove('editor-fullscreen');
 }
 
 function setEditorMode(mode) {

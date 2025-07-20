@@ -1437,6 +1437,12 @@ body {
     margin-left: 0.5rem;
 }
 
+.tag-autocomplete {
+    min-width: 150px;
+    width: auto !important;
+    max-width: 300px;
+}
+
 .toolbar-ai-actions {
     position: relative;
 }

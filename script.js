@@ -7,6 +7,13 @@ function debounce(func, delay) {
     };
 }
 
+let tagAutocomplete = {
+    active: false,
+    container: null,
+    items: [],
+    activeIndex: -1
+};
+
 let state = {
     isAuthenticated: false,
     geminiKey: '',
@@ -220,7 +227,12 @@ function setupEventListeners() {
     elements.noteEditor.addEventListener('keyup', handleEditorSelectionChange);
     elements.aiActionsBtn.addEventListener('mousedown', toggleAiActionsMenu);
     elements.aiActionsMenu.addEventListener('click', handleAiActionClick);
-    elements.noteTagInput.addEventListener('keydown', handleTagInput);
+    elements.noteTagInput.addEventListener('keydown', handleTagInputKeydown);
+    elements.noteTagInput.addEventListener('input', handleTagInputAutocomplete);
+    elements.noteTagInput.addEventListener('blur', () => {
+        // Use a small delay to allow a click on an autocomplete item to register
+        setTimeout(hideTagAutocomplete, 150);
+    });
     elements.currentFolderName.addEventListener('click', handleFolderNameClick);
     elements.notePreview.addEventListener('change', handleCheckboxChangeInPreview);
 
@@ -2250,13 +2262,25 @@ function handleCheckboxChangeInPreview(e) {
     }
 }
 
-function handleTagInput(e) {
+function handleTagInputKeydown(e) {
+    if (tagAutocomplete.active) {
+        if (['ArrowDown', 'ArrowUp', 'Enter', 'Tab', 'Escape'].includes(e.key)) {
+            e.preventDefault();
+            if (e.key === 'ArrowDown') navigateTagAutocomplete(1);
+            else if (e.key === 'ArrowUp') navigateTagAutocomplete(-1);
+            else if (e.key === 'Enter' || e.key === 'Tab') selectTagAutocomplete();
+            else if (e.key === 'Escape') hideTagAutocomplete();
+            return;
+        }
+    }
+
     if (e.key === 'Enter' || e.key === ',') {
         e.preventDefault();
         const tagValue = elements.noteTagInput.value.trim().replace(/,/g, '');
         if (tagValue) {
             addTagToNote(tagValue);
             elements.noteTagInput.value = '';
+            hideTagAutocomplete();
         }
     }
 }
@@ -2309,6 +2333,86 @@ function renderNoteTags() {
             tagPill.appendChild(removeBtn);
             elements.noteTagsContainer.appendChild(tagPill);
         });
+    }
+}
+
+function handleTagInputAutocomplete() {
+    const term = elements.noteTagInput.value.trim().toLowerCase();
+    if (!term) {
+        hideTagAutocomplete();
+        return;
+    }
+
+    const existingTags = Array.from(elements.noteTagsContainer.querySelectorAll('.tag-pill')).map(p => p.firstChild.textContent);
+    const matches = state.allTags.filter(tag => tag.toLowerCase().includes(term) && !existingTags.includes(tag));
+
+    if (matches.length > 0) {
+        tagAutocomplete.items = matches;
+        renderTagAutocomplete();
+    } else {
+        hideTagAutocomplete();
+    }
+}
+
+function renderTagAutocomplete() {
+    if (!tagAutocomplete.container) {
+        tagAutocomplete.container = document.createElement('div');
+        tagAutocomplete.container.className = 'autocomplete-container tag-autocomplete';
+        elements.editorPanel.appendChild(tagAutocomplete.container);
+    }
+
+    tagAutocomplete.container.innerHTML = '';
+    tagAutocomplete.items.forEach((item, index) => {
+        const div = document.createElement('div');
+        div.className = 'autocomplete-item';
+        div.textContent = item;
+        div.dataset.index = index;
+        div.addEventListener('click', () => {
+            tagAutocomplete.activeIndex = index;
+            selectTagAutocomplete();
+        });
+        tagAutocomplete.container.appendChild(div);
+    });
+
+    tagAutocomplete.active = true;
+    tagAutocomplete.activeIndex = 0;
+    if (tagAutocomplete.container.children.length > 0) {
+        tagAutocomplete.container.children[0].classList.add('active');
+    }
+
+    const inputRect = elements.noteTagInput.getBoundingClientRect();
+    const panelRect = elements.editorPanel.getBoundingClientRect();
+
+    tagAutocomplete.container.style.display = 'block';
+    tagAutocomplete.container.style.top = `${inputRect.bottom - panelRect.top}px`;
+    tagAutocomplete.container.style.left = `${inputRect.left - panelRect.left}px`;
+    tagAutocomplete.container.style.minWidth = `${inputRect.width}px`;
+    tagAutocomplete.container.style.width = 'auto';
+}
+
+function hideTagAutocomplete() {
+    tagAutocomplete.active = false;
+    if (tagAutocomplete.container) {
+        tagAutocomplete.container.style.display = 'none';
+    }
+}
+
+function navigateTagAutocomplete(direction) {
+    const items = tagAutocomplete.container.children;
+    if (items.length === 0) return;
+
+    items[tagAutocomplete.activeIndex]?.classList.remove('active');
+    tagAutocomplete.activeIndex = (tagAutocomplete.activeIndex + direction + items.length) % items.length;
+    items[tagAutocomplete.activeIndex]?.classList.add('active');
+    items[tagAutocomplete.activeIndex]?.scrollIntoView({ block: 'nearest' });
+}
+
+function selectTagAutocomplete() {
+    const selected = tagAutocomplete.items[tagAutocomplete.activeIndex];
+    if (selected) {
+        addTagToNote(selected);
+        elements.noteTagInput.value = '';
+        hideTagAutocomplete();
     }
 }
 

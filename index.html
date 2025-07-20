@@ -19,7 +19,10 @@
                 <input type="text" id="githubToken" placeholder="GitHub Personal Access Token" required>
                 <button type="submit">Login</button>
             </form>
-            <p class="setup-hint">First time? Check README for setup instructions</p>
+            <p class="setup-hint">First time? Check SECURITY.md before deploying!</p>
+            <p id="securityWarning" style="color: #ef4444; margin-top: 1rem; display: none;">
+                ⚠️ Using default password! Change hash in script.js before deploying!
+            </p>
         </div>
     </div>
 

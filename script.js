@@ -1,7 +1,12 @@
 // Chrisidian - AI-Powered Notes App
+// SECURITY: Update the passwordHash below BEFORE deploying!
+// Generate your hash at: https://www.sha256online.com/
+
 // Configuration and State
 const APP_CONFIG = {
-    password: 'chrchr', // Change this!
+    // Password hash - default is 'Hello World!' FOR DEMO ONLY!
+    // Generate your own at: https://www.sha256online.com/
+    passwordHash: '7f72131af35c82819bb44f256e34419f381fdeb465b1727d153b58030fabbcb7',
     gistFilename: 'chrisidian-notes.json'
 };
 
@@ -44,6 +49,13 @@ const loadingOverlay = document.getElementById('loadingOverlay');
 
 // Initialize App
 document.addEventListener('DOMContentLoaded', () => {
+    // Security warning for default hash
+    if (APP_CONFIG.passwordHash === '7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069') {
+        console.warn('⚠️ SECURITY WARNING: Using default password hash! Change it before deploying!');
+        const warning = document.getElementById('securityWarning');
+        if (warning) warning.style.display = 'block';
+    }
+    
     checkAutoLogin();
     setupEventListeners();
 });
@@ -64,7 +76,10 @@ function checkAutoLogin() {
 loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     
-    if (passwordInput.value !== APP_CONFIG.password) {
+    // Hash the entered password and compare
+    const enteredPasswordHash = await hashPassword(passwordInput.value);
+    
+    if (enteredPasswordHash !== APP_CONFIG.passwordHash) {
         alert('Invalid password!');
         return;
     }
@@ -82,6 +97,15 @@ loginForm.addEventListener('submit', async (e) => {
     showMainApp();
     await loadData();
 });
+
+// Hash function
+async function hashPassword(password) {
+    const msgUint8 = new TextEncoder().encode(password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return hashHex;
+}
 
 logoutBtn.addEventListener('click', () => {
     localStorage.removeItem('chrisidian_auth');

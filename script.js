@@ -7,13 +7,6 @@ function debounce(func, delay) {
     };
 }
 
-const APP_CONFIG = {
-    passwordHash: '7f72131af35c82819bb44f256e34419f381fdeb465b1727d153b58030fabbcb7',
-    gistFilename: 'chrisidian-notes.json',
-    embeddingModel: 'text-embedding-004',
-    templateFolder: 'Templates'
-};
-
 let state = {
     isAuthenticated: false,
     geminiKey: '',
@@ -34,46 +27,6 @@ let state = {
     currentServings: null,
     baseServings: null
 };
-
-const THEMES = [
-    { name: 'Slate', className: 'theme-slate', gradient: ['#64748b', '#94a3b8'] },
-    { name: 'Dusk', className: 'theme-dusk', gradient: ['#4f46e5', '#7c3aed'] },
-    { name: 'Forest', className: 'theme-forest', gradient: ['#16a34a', '#65a30d'] },
-    { name: 'Rose', className: 'theme-rose', gradient: ['#be185d', '#e11d48'] },
-    { name: 'Ocean', className: 'theme-ocean', gradient: ['#0ea5e9', '#0891b2'] },
-    { name: 'Amethyst', className: 'theme-amethyst', gradient: ['#9333ea', '#be185d'] },
-    { name: 'Sunset', className: 'theme-sunset', gradient: ['#ea580c', '#ca8a04'] },
-    { name: 'Mint', className: 'theme-mint', gradient: ['#10b981', '#16a34a'] },
-    { name: 'Merlot', className: 'theme-merlot', gradient: ['#be185d', '#9d174d'] },
-    { name: 'Olive', className: 'theme-olive', gradient: ['#65a30d', '#4d7c0f'] },
-    { name: 'Cyber', className: 'theme-cyber', gradient: ['#0891b2', '#2563eb'] },
-    { name: 'Espresso', className: 'theme-espresso', gradient: ['#a16207', '#854d0e'] },
-    { name: 'Arctic', className: 'theme-arctic', gradient: ['#3b82f6', '#60a5fa'] },
-    { name: 'Sandstone', className: 'theme-sandstone', gradient: ['#ca8a04', '#b45309'] },
-    { name: 'Monochrome', className: 'theme-monochrome', gradient: ['#a1a1aa', '#71717a'] },
-    { name: 'Bronze', className: 'theme-bronze', gradient: ['#b45309', '#92400e'] },
-    { name: 'Night', className: 'theme-night', gradient: ['#8b5cf6', '#a78bfa'] },
-    { name: 'Black', className: 'theme-black', gradient: ['#a3a3a3', '#d4d4d4'] },
-    { name: 'White', className: 'theme-white', gradient: ['#3b82f6', '#60a5fa'] },
-    { name: 'Light Grey', className: 'theme-light-grey', gradient: ['#475569', '#64748b'] },
-    { name: 'Coral', className: 'theme-coral', gradient: ['#ef4444', '#f87171'] },
-    { name: 'Indigo', className: 'theme-indigo', gradient: ['#6366f1', '#818cf8'] },
-    { name: 'Emerald', className: 'theme-emerald', gradient: ['#10b981', '#34d399'] },
-    { name: 'Gold', className: 'theme-gold', gradient: ['#f59e0b', '#fbbf24'] },
-];
-
-const FONTS = [
-    { name: 'Inter', family: "'Inter', sans-serif" },
-    { name: 'Roboto', family: "'Roboto', sans-serif" },
-    { name: 'Open Sans', family: "'Open Sans', sans-serif" },
-    { name: 'Lato', family: "'Lato', sans-serif" },
-    { name: 'Nunito', family: "'Nunito', sans-serif" },
-    { name: 'Merriweather', family: "'Merriweather', serif" },
-    { name: 'Lora', family: "'Lora', serif" },
-    { name: 'Source Serif Pro', family: "'Source Serif Pro', serif" },
-    { name: 'Fira Code', family: "'Fira Code', monospace" },
-    { name: 'JetBrains Mono', family: "'JetBrains Mono', monospace" }
-];
 
 let userPreferences = {
     fontFamily: FONTS[0].family,
@@ -789,71 +742,7 @@ async function processCommand() {
         const relevantNotes = await findSemanticallyRelevantNotes(command);
         console.log(`Sending ${relevantNotes.length} most relevant notes to AI for context.`);
 
-        const masterPrompt = `You are the intelligent engine for a note-taking app. Your task is to analyze a user's command and their most relevant notes to determine the single correct action to take.
-
-You MUST respond with a single JSON object describing a "tool" to use and its "args".
-The available tools are: "CREATE_NOTE", "UPDATE_NOTE", "DELETE_NOTE", "ANSWER_QUESTION".
-
-Here is all the data you need:
-
-1. User's Command:
-"${command}"
-
-2. Existing Folders:
-${JSON.stringify(state.folders)}
-
-3. Relevant Existing Notes (ID, Title, Tags, and Content):
-${JSON.stringify(relevantNotes.map(n => ({ id: n.id, title: n.title, tags: n.tags || [], content: n.content })))}
-
----
-TOOL-USE INSTRUCTIONS:
-
-1. tool: "ANSWER_QUESTION"
-   - Use this if the command is a question.
-   - **CRITICAL**: The 'content' you generate MUST be well-formatted markdown. Use headings, lists, bold text, and newlines (\`\\n\`) to make the note clear and readable.
-   - **LINKING**: When you reference a specific note, you MUST create a markdown link to it using its ID in this exact format: \`[The Note's Title](app://note/THE_NOTE_ID)\`.
-   - **Example**: "Here are the cookie recipes I found:\\n\\n## Recipes\\n\\n- **[Nemme Havregrynskager](app://note/1709251200000)**: A simple Danish oatmeal cookie.\\n- **[Chocolate Chip Cookies](app://note/1704067200000)**: A classic American recipe."
-   - If no notes seem relevant, say you couldn't find an answer in the notes.
-   - args: { "answer": "The full, markdown-formatted answer." }
-
-2. tool: "CREATE_NOTE"
-   - Use this for commands that clearly ask to save new information.
-   - **CRITICAL**: The 'content' you generate MUST be well-formatted markdown. Use headings, lists, bold text, and newlines (\`\\n\`) to make the note clear and readable.
-   - **If the note is a RECIPE, you MUST use this template**:
-     \`\`\`markdown
-     # {{Recipe Title}}
-
-     > A short description of the recipe.
-
-     **Servings:** {{Number}}
-     **Prep time:** {{Time}}
-     **Cook time:** {{Time}}
-
-     ## Ingredients
-     - 1 cup Flour
-     - 2 large Eggs
-
-     ## Instructions
-     1. First step...
-     2. Second step...
-     \`\`\`
-   - When creating a recipe, you MUST set the 'folder' to "Recipes" and add a 'servings' argument to the JSON (e.g., \`"servings": 4\`). The ingredient lines in the markdown 'content' MUST start with a list marker and a quantity.
-   - **args for a regular note**: { "title": "...", "content": "...", "folder": "...", "tags": ["relevant", "keywords"], "newFolder": true/false }
-   - **args for a RECIPE**: { "title": "...", "content": "...", "folder": "Recipes", "tags": ["recipe", "dessert"], "servings": 4, "newFolder": false }
-
-3. tool: "UPDATE_NOTE"
-   - Use this to modify an existing note based on the 'Relevant Existing Notes'.
-   - **CRITICAL**: The 'newContent' you generate MUST be the complete, well-formatted markdown for the entire note.
-   - If you are updating a **RECIPE**, ensure the updated content still follows the recipe template structure and that all ingredient lines start with a quantity for scaling.
-   - args: { "targetTitle": "Full Title of Note to Update", "newTitle": "Updated Title", "newContent": "Full new content...", "newTags": ["updated", "tags"] }
-
-4. tool: "DELETE_NOTE"
-   - Use this to delete a note based on the 'Relevant Existing Notes'.
-   - args: { "targetTitle": "Full Title of Note to Delete" }
-
----
-Now, analyze all the provided data and return the single JSON object for the correct tool call. Do not include any other text or explanation.`;
-
+        const masterPrompt = getMasterPrompt(command, state.folders, relevantNotes);
         const mainResult = await callGeminiAPI(masterPrompt, { temperature: 0.1, maxOutputTokens: 8192 });
 
         if (!mainResult.candidates || mainResult.candidates.length === 0) {
@@ -1473,29 +1362,7 @@ async function ensureTemplatesExist() {
         madeChanges = true;
     }
 
-    const templates = [
-        {
-            title: 'Meeting Minutes Template',
-            tags: ['work', 'meeting'],
-            content: `# Meeting: {{Meeting Title}}\n\n**Date:** ${new Date().toISOString().split('T')[0]}\n**Time:** \n**Location:** \n\n## Attendees\n- \n\n## Agenda\n1. \n\n## Discussion\n\n\n## Action Items\n- [ ] Task for @name due by YYYY-MM-DD\n\n## Decisions Made\n\n`
-        },
-        {
-            title: 'Daily Journal Template',
-            tags: ['personal', 'journal'],
-            content: `# Daily Journal - ${new Date().toISOString().split('T')[0]}\n\n## How I'm Feeling Today\n- Rate your day (1-5): \n- Mood: \n\n## Three Things I'm Grateful For\n1. \n2. \n3. \n\n## Today's Highlights\n\n\n## Challenges & Learnings\n\n\n## Goals for Tomorrow\n- [ ] `
-        },
-        {
-            title: 'Bug Report Template',
-            tags: ['work', 'bug'],
-            content: `# Bug Report: {{Brief description of bug}}\n\n**Severity:** High/Medium/Low\n**Status:** Open\n\n## Description\nA clear and concise description of what the bug is.\n\n## Steps to Reproduce\n1. Go to '...'\n2. Click on '....'\n3. Scroll down to '....'\n4. See error\n\n## Expected Behavior\nA clear and concise description of what you expected to happen.\n\n## Actual Behavior\nA clear and concise description of what actually happened.\n\n## Environment\n- **OS:** \n- **Browser:** \n- **Version:** `
-        },
-        {
-            title: 'Recipe Template',
-            tags: ['recipe'],
-            content: `# {{Recipe Title}}\n\n> A short description of the recipe.\n\n**Servings:** 4\n**Prep time:** \n**Cook time:** \n\n## Ingredients\n- 1 cup Flour\n- 2 large Eggs\n\n## Instructions\n1. First step...\n2. Second step...\n`
-        }
-    ];
-
+    const templates = getTemplates();
     for (const template of templates) {
         const templateExists = state.notes.some(n => n.folder === templateFolder && n.title === template.title);
         if (!templateExists) {

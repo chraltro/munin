@@ -210,13 +210,11 @@ function setupEventListeners() {
 
     // Hide contextual menu on mouseup if selection is lost
     document.addEventListener('mouseup', (e) => {
-        if (e.target.closest('.contextual-menu')) return;
-
-        setTimeout(() => {
-            if (window.getSelection().toString().trim().length === 0) {
-                elements.contextualMenu.style.display = 'none';
-            }
-        }, 150);
+        // This global handler should hide the menu if a click occurs anywhere
+        // outside of the menu itself or the editor. The editor has its own logic.
+        if (!e.target.closest('.contextual-menu') && e.target !== elements.noteEditor) {
+            elements.contextualMenu.style.display = 'none';
+        }
     });
 }
 
@@ -2179,8 +2177,8 @@ function replaceSelectedText(replacement) {
 }
 
 async function performContextualAIAction(action, tone) {
-    const selection = window.getSelection();
-    const selectedText = selection.toString().trim();
+    const editor = elements.noteEditor;
+    const selectedText = editor.value.substring(editor.selectionStart, editor.selectionEnd).trim();
     if (!selectedText) return;
 
     let prompt = '';

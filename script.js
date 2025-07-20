@@ -20,7 +20,7 @@ let state = {
     notes: [],
     folders: ['Prompts', 'Recipes'],
     currentFolder: 'All Notes',
-    currentTag: 'All Notes',
+    activeTags: [],
     allTags: [],
     currentNote: null,
     gistId: null,
@@ -982,7 +982,7 @@ function clearSemanticSearch() {
 function renderFolders() {
     // Render desktop folder list
     elements.folderList.innerHTML = `
-        <div class="folder-item ${state.currentFolder === 'All Notes' && state.currentTag === 'All Notes' ? 'active' : ''}" onclick="selectFolder('All Notes')">
+        <div class="folder-item ${state.currentFolder === 'All Notes' && state.activeTags.length === 0 ? 'active' : ''}" onclick="selectFolder('All Notes')">
             <span class="folder-name"><i class="fas fa-folder"></i> All Notes</span>
         </div>
     `;
@@ -1041,9 +1041,11 @@ function renderNotes(notesToShow = null, animate = true) {
             notesToDisplay_intermediate = notesToDisplay_intermediate.filter(n => n.folder === state.currentFolder);
         }
 
-        // Then filter by tag
-        if (state.currentTag !== 'All Notes') {
-            notesToDisplay_intermediate = notesToDisplay_intermediate.filter(n => n.tags && n.tags.includes(state.currentTag));
+        // Then filter by tags
+        if (state.activeTags.length > 0) {
+            notesToDisplay_intermediate = notesToDisplay_intermediate.filter(n =>
+                n.tags && state.activeTags.every(tag => n.tags.includes(tag))
+            );
         }
         
         notesToDisplay = notesToDisplay_intermediate;
@@ -1117,9 +1119,9 @@ function renderNotes(notesToShow = null, animate = true) {
 function selectFolder(folder) {
     state.isSemanticSearching = false;
     state.currentFolder = folder;
-    state.currentTag = 'All Notes';
-    elements.currentFolderName.innerHTML = folder;
+    state.activeTags = [];
     elements.searchInput.value = '';
+    updateNotesHeader();
     renderFolders();
     renderTags();
     renderNotes();
@@ -1127,20 +1129,66 @@ function selectFolder(folder) {
 
 function selectTag(tag) {
     state.isSemanticSearching = false;
-    state.currentTag = tag;
     
     if (tag === 'All Notes') {
+        state.activeTags = [];
         state.currentFolder = 'All Notes';
-        elements.currentFolderName.innerHTML = state.currentFolder;
     } else {
+        if (!state.activeTags.includes(tag)) {
+            state.activeTags.push(tag);
+        }
         state.currentFolder = 'All Notes'; // Filtering by tag implies all folders.
-        elements.currentFolderName.innerHTML = `Tag: <span class="tag-filter-name">${tag}</span>`;
     }
     
     elements.searchInput.value = '';
+    updateNotesHeader();
     renderFolders();
     renderTags();
     renderNotes();
+}
+
+function removeTagFilter(tagToRemove) {
+    state.activeTags = state.activeTags.filter(t => t !== tagToRemove);
+    if (state.activeTags.length === 0) {
+        state.currentFolder = 'All Notes';
+    }
+    updateNotesHeader();
+    renderTags();
+    renderNotes();
+}
+
+function updateNotesHeader() {
+    elements.currentFolderName.innerHTML = ''; // Clear it first
+
+    if (state.activeTags.length > 0) {
+        const container = document.createElement('div');
+        container.className = 'notes-header-tags';
+
+        const titleSpan = document.createElement('span');
+        titleSpan.textContent = 'Tags:';
+        container.appendChild(titleSpan);
+
+        state.activeTags.forEach(tag => {
+            const tagPill = document.createElement('span');
+            tagPill.className = 'tag-filter-name';
+            
+            const textNode = document.createTextNode(tag);
+            tagPill.appendChild(textNode);
+
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'tag-filter-remove-btn';
+            removeBtn.innerHTML = '&times;';
+            removeBtn.title = `Remove filter for ${tag}`;
+            removeBtn.onclick = () => removeTagFilter(tag);
+            
+            tagPill.appendChild(removeBtn);
+            container.appendChild(tagPill);
+        });
+
+        elements.currentFolderName.appendChild(container);
+    } else {
+        elements.currentFolderName.textContent = state.currentFolder;
+    }
 }
 
 function updateAllTags() {
@@ -1162,7 +1210,7 @@ function renderTags() {
 
     // Render "All Notes" tag
     elements.tagList.innerHTML = `
-        <span class="tag-item ${state.currentTag === 'All Notes' ? 'active' : ''}" onclick="selectTag('All Notes')">
+        <span class="tag-item ${state.activeTags.length === 0 ? 'active' : ''}" onclick="selectTag('All Notes')">
             All Notes
         </span>
     `;
@@ -1170,7 +1218,7 @@ function renderTags() {
     // Render all other tags
     state.allTags.forEach(tag => {
         const tagEl = document.createElement('span');
-        tagEl.className = `tag-item ${state.currentTag === tag ? 'active' : ''}`;
+        tagEl.className = `tag-item ${state.activeTags.includes(tag) ? 'active' : ''}`;
         tagEl.textContent = tag;
         tagEl.onclick = () => selectTag(tag);
         tagEl.dataset.tagName = tag;
@@ -1628,8 +1676,9 @@ function renderCustomMobileSelector() {
 
     // Set button text
     const btn = elements.customMobileSelectorBtn;
-    if (state.currentTag !== 'All Notes') {
-        btn.innerHTML = `<span>Tag: <span class="tag-filter-name">${state.currentTag}</span></span><i class="fas fa-chevron-down"></i>`;
+    if (state.activeTags.length > 0) {
+        const tagsHTML = state.activeTags.map(t => `<span class="tag-item">${t}</span>`).join(' ');
+        btn.innerHTML = `<span>${tagsHTML}</span><i class="fas fa-chevron-down"></i>`;
     } else {
         btn.innerHTML = `<span>${state.currentFolder}</span><i class="fas fa-chevron-down"></i>`;
     }

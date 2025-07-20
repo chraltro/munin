@@ -549,13 +549,40 @@ body {
     color: var(--primary);
 }
 
+.notes-header-tags {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
 .tag-filter-name {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
     background-color: var(--primary);
     color: white;
     padding: 0.1em 0.5em;
     border-radius: var(--radius);
     font-size: 0.9em;
     vertical-align: middle;
+}
+
+.tag-filter-remove-btn {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    padding: 0;
+    margin-left: 0.25rem;
+    font-size: 1.1em;
+    line-height: 1;
+    transition: var(--transition-fast);
+}
+
+.tag-filter-remove-btn:hover {
+    color: white;
+    transform: scale(1.2);
 }
 
 .notes-header #newNoteBtn {

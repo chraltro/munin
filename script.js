@@ -457,6 +457,7 @@ function renderFolders() {
             <i class="fas fa-folder"></i> All Notes
         </div>
     `;
+    state.folders.sort();
     state.folders.forEach(folder => {
         const folderEl = document.createElement('div');
         folderEl.className = `folder-item ${state.currentFolder === folder ? 'active' : ''}`;
@@ -534,7 +535,7 @@ function openNote(note) {
     noteTitle.value = note.title;
     noteEditor.value = note.content;
     editorPanel.style.display = 'flex';
-    setEditorMode('edit');
+    setEditorMode('preview');
 }
 
 function closeEditor() {

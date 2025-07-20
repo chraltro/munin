@@ -53,14 +53,6 @@
 
             <!-- Notes Area -->
             <main class="notes-area">
-                <!-- Input Bar -->
-                <div class="input-bar">
-                    <input type="text" id="commandInput" placeholder='Try: "Add a new idea: ...", "Update my cookie recipe...", "Delete the project ideas note"'>
-                    <button id="processBtn" class="process-btn">
-                        <i class="fas fa-magic"></i> Process
-                    </button>
-                </div>
-
                 <!-- Notes List -->
                 <div class="notes-container">
                     <div class="notes-header">
@@ -73,6 +65,14 @@
                         <!-- Notes will be dynamically added here -->
                     </div>
                 </div>
+
+                <!-- Input Bar -->
+                <div class="input-bar">
+                    <input type="text" id="commandInput" placeholder='Try: "Add a new idea: ..."'>
+                    <button id="processBtn" class="process-btn">
+                        <i class="fas fa-magic"></i> Process
+                    </button>
+                </div>
             </main>
 
             <!-- Editor Panel -->
@@ -84,10 +84,10 @@
                     </button>
                 </div>
                 <div class="editor-toolbar">
-                    <button id="editModeBtn" class="toolbar-btn active">
+                    <button id="editModeBtn" class="toolbar-btn">
                         <i class="fas fa-edit"></i> Edit
                     </button>
-                    <button id="previewModeBtn" class="toolbar-btn">
+                    <button id="previewModeBtn" class="toolbar-btn active">
                         <i class="fas fa-eye"></i> Preview
                     </button>
                     <button id="saveNoteBtn" class="toolbar-btn primary">
@@ -97,8 +97,8 @@
                         <i class="fas fa-trash"></i> Delete
                     </button>
                 </div>
-                <textarea id="noteEditor" placeholder="Write your note in Markdown..."></textarea>
-                <div id="notePreview" class="note-preview" style="display: none;"></div>
+                <textarea id="noteEditor" placeholder="Write your note in Markdown..." style="display: none;"></textarea>
+                <div id="notePreview" class="note-preview"></div>
             </aside>
         </div>
 

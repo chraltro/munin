@@ -24,10 +24,10 @@ body {
     background-color: var(--bg-primary);
     color: var(--text-primary);
     height: 100vh;
+    width: 100vw;
     overflow: hidden;
 }
 
-/* Login Screen */
 .login-container {
     display: flex;
     align-items: center;
@@ -95,7 +95,6 @@ body {
     color: var(--text-secondary);
 }
 
-/* Main App */
 .app-container {
     display: flex;
     flex-direction: column;
@@ -109,6 +108,7 @@ header {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-shrink: 0;
 }
 
 header h1 {
@@ -131,20 +131,19 @@ header h1 {
     color: var(--text-primary);
 }
 
-/* Main Content Layout */
 .main-content {
     display: flex;
     flex: 1;
     overflow: hidden;
 }
 
-/* Sidebar */
 .sidebar {
     width: 250px;
     background: var(--bg-secondary);
     border-right: 1px solid var(--border);
     display: flex;
     flex-direction: column;
+    flex-shrink: 0;
 }
 
 .sidebar-header {
@@ -200,7 +199,6 @@ header h1 {
     color: white;
 }
 
-/* Notes Area */
 .notes-area {
     flex: 1;
     display: flex;
@@ -211,9 +209,10 @@ header h1 {
 .input-bar {
     padding: 1rem;
     background: var(--bg-secondary);
-    border-bottom: 1px solid var(--border);
+    border-top: 1px solid var(--border);
     display: flex;
     gap: 1rem;
+    flex-shrink: 0;
 }
 
 #commandInput {
@@ -303,13 +302,13 @@ header h1 {
     justify-content: space-between;
 }
 
-/* Editor Panel */
 .editor-panel {
     width: 50%;
-    background: var(--bg-secondary);
+    background: var(--bg-primary);
     border-left: 1px solid var(--border);
     display: flex;
     flex-direction: column;
+    flex-shrink: 0;
 }
 
 .editor-header {
@@ -318,6 +317,7 @@ header h1 {
     display: flex;
     gap: 1rem;
     align-items: center;
+    background: var(--bg-secondary);
 }
 
 #noteTitle {
@@ -336,6 +336,7 @@ header h1 {
     border-bottom: 1px solid var(--border);
     display: flex;
     gap: 0.5rem;
+    background: var(--bg-secondary);
 }
 
 .toolbar-btn {
@@ -389,6 +390,7 @@ header h1 {
     font-size: 0.875rem;
     line-height: 1.6;
     resize: none;
+    overflow-y: auto;
 }
 
 .note-preview {
@@ -399,7 +401,7 @@ header h1 {
 }
 
 .note-preview h1, .note-preview h2, .note-preview h3 {
-    margin-top: 1.75rem; 
+    margin-top: 1.75rem;
     margin-bottom: 0.75rem;
 }
 
@@ -439,7 +441,6 @@ header h1 {
     color: var(--text-secondary);
 }
 
-/* Loading Overlay */
 .loading-overlay {
     position: fixed;
     top: 0;
@@ -474,7 +475,6 @@ header h1 {
     color: var(--text-primary);
 }
 
-/* Scrollbar Styling */
 ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -493,12 +493,31 @@ header h1 {
     background: var(--border);
 }
 
-/* Responsive Design */
+/* --- MOBILE STYLES --- */
 @media (max-width: 768px) {
-    .sidebar {
-        display: none;
+    header h1 {
+        font-size: 1.25rem;
+    }
+    header {
+        padding: 0.75rem 1rem;
+    }
+
+    .main-content {
+        flex-direction: column;
     }
     
+    .sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+        flex-shrink: 0;
+        max-height: 30vh; /* Prevent folders from taking too much space */
+    }
+
+    .notes-list {
+        grid-template-columns: 1fr;
+    }
+
     .editor-panel {
         position: fixed;
         top: 0;
@@ -506,15 +525,13 @@ header h1 {
         right: 0;
         bottom: 0;
         width: 100%;
-        z-index: 100;
+        height: 100%;
+        z-index: 500;
+        border-left: none;
     }
-    
-    .notes-list {
-        grid-template-columns: 1fr;
-    }
-    
-    header h1 {
-        font-size: 1.25rem;
+
+    #closeEditorBtn {
+        display: block; /* Always show close button on mobile */
     }
     
     .login-box {

@@ -58,6 +58,7 @@ const elements = {
     noteTagInput: document.getElementById('noteTagInput'),
     noteEditor: document.getElementById('noteEditor'),
     autocompleteContainer: document.getElementById('autocompleteContainer'),
+    contextualMenu: document.getElementById('contextualMenu'),
     notePreview: document.getElementById('notePreview'),
     editModeBtn: document.getElementById('editModeBtn'),
     previewModeBtn: document.getElementById('previewModeBtn'),
@@ -192,6 +193,8 @@ function setupEventListeners() {
     elements.noteEditor.addEventListener('input', handleNoteChange);
     elements.noteEditor.addEventListener('input', handleEditorAutocomplete);
     elements.noteEditor.addEventListener('keydown', handleEditorAutocompleteKeydown);
+    elements.noteEditor.addEventListener('mouseup', handleEditorMouseUp);
+    elements.contextualMenu.addEventListener('click', handleContextualMenuClick);
     elements.noteTagInput.addEventListener('keydown', handleTagInput);
     elements.currentFolderName.addEventListener('click', handleFolderNameClick);
     elements.notePreview.addEventListener('change', handleCheckboxChangeInPreview);
@@ -203,6 +206,17 @@ function setupEventListeners() {
         if (elements.customMobileSelector && !elements.customMobileSelector.contains(e.target)) {
             elements.customMobileSelector.classList.remove('is-open');
         }
+    });
+
+    // Hide contextual menu on mouseup if selection is lost
+    document.addEventListener('mouseup', (e) => {
+        if (e.target.closest('.contextual-menu')) return;
+
+        setTimeout(() => {
+            if (window.getSelection().toString().trim().length === 0) {
+                elements.contextualMenu.style.display = 'none';
+            }
+        }, 150);
     });
 }
 
@@ -2071,6 +2085,142 @@ function renderNoteTags() {
             tagPill.appendChild(removeBtn);
             elements.noteTagsContainer.appendChild(tagPill);
         });
+    }
+}
+
+// --- Contextual AI Menu Logic ---
+
+function populateContextualMenu() {
+    elements.contextualMenu.innerHTML = `
+        <button data-action="summarize" title="Summarize the selected text">Summarize</button>
+        <button data-action="expand" title="Expand on the selected text">Expand</button>
+        <button data-action="fix" title="Fix spelling and grammar">Fix Grammar</button>
+        <div class="contextual-menu-dropdown">
+            <button>Change Tone</button>
+            <div class="contextual-menu-dropdown-content">
+                <button data-action="tone" data-tone="Professional">Professional</button>
+                <button data-action="tone" data-tone="Casual">Casual</button>
+                <button data-action="tone" data-tone="Friendly">Friendly</button>
+                <button data-action="tone" data-tone="Technical">Technical</button>
+            </div>
+        </div>
+        <div class="menu-separator"></div>
+        <button data-action="cleanup" title="Apply best practice formatting or match template">Clean Up</button>
+    `;
+}
+
+function handleEditorMouseUp(e) {
+    // We use a small timeout to let the selection event finalize
+    setTimeout(() => {
+        const selection = window.getSelection();
+        const selectedText = selection.toString().trim();
+        const menu = elements.contextualMenu;
+
+        if (selectedText.length > 10) { // Only show for reasonably long selections
+            const range = selection.getRangeAt(0);
+            const rect = range.getBoundingClientRect();
+            const editorPanelRect = elements.editorPanel.getBoundingClientRect();
+
+            populateContextualMenu();
+            menu.style.display = 'flex';
+
+            let top = rect.top - editorPanelRect.top - menu.offsetHeight - 10;
+            let left = rect.left - editorPanelRect.left + (rect.width / 2) - (menu.offsetWidth / 2);
+
+            // Boundary checks
+            if (top < 10) { // If it's too close to the top, move it below
+                top = rect.bottom - editorPanelRect.top + 10;
+            }
+            if (left < 10) {
+                left = 10;
+            }
+            if ((left + menu.offsetWidth) > editorPanelRect.width) {
+                left = editorPanelRect.width - menu.offsetWidth - 10;
+            }
+
+            menu.style.top = `${top}px`;
+            menu.style.left = `${left}px`;
+        } else {
+            menu.style.display = 'none';
+        }
+    }, 50);
+}
+
+function handleContextualMenuClick(e) {
+    const button = e.target.closest('button');
+    if (!button) return;
+
+    const action = button.dataset.action;
+    const tone = button.dataset.tone;
+
+    if (action) {
+        performContextualAIAction(action, tone);
+        elements.contextualMenu.style.display = 'none';
+    }
+}
+
+function replaceSelectedText(replacement) {
+    const editor = elements.noteEditor;
+    const start = editor.selectionStart;
+    const end = editor.selectionEnd;
+
+    // This is a more robust way to handle programmatic changes for undo/redo
+    document.execCommand('insertText', false, replacement);
+    
+    editor.selectionStart = start;
+    editor.selectionEnd = start + replacement.length;
+
+    handleNoteChange(); // Trigger autosave
+}
+
+async function performContextualAIAction(action, tone) {
+    const selection = window.getSelection();
+    const selectedText = selection.toString().trim();
+    if (!selectedText) return;
+
+    let prompt = '';
+    showLoading(true, 'AI is working...');
+
+    switch (action) {
+        case 'summarize':
+            prompt = `Summarize the following text in a concise paragraph:\n\n---\n${selectedText}`;
+            break;
+        case 'expand':
+            prompt = `Expand on the following points, providing more detail and explanation. Format the output as a continuation of the text:\n\n---\n${selectedText}`;
+            break;
+        case 'fix':
+            prompt = `Correct any spelling mistakes and fix grammatical errors in the following text. Only return the corrected text, without any explanation or preamble:\n\n---\n${selectedText}`;
+            break;
+        case 'tone':
+            prompt = `Rewrite the following text in a ${tone} tone. Only return the rewritten text, without any explanation or preamble:\n\n---\n${selectedText}`;
+            break;
+        case 'cleanup':
+            const noteIsRecipe = state.currentNote && state.currentNote.folder === 'Recipes';
+            if (noteIsRecipe) {
+                const recipeTemplate = getTemplates().find(t => t.title === 'Recipe Template');
+                prompt = `You are a text formatting expert. Clean up the following user-provided text to match the provided Markdown recipe template. Retain all original information, just reformat it. Text to clean up:\n\n---\n${selectedText}\n\n---\nTemplate to match:\n${recipeTemplate.content}`;
+            } else {
+                 prompt = `Clean up and format the following text using Markdown best practices (headings, lists, bolding, etc.) to improve its readability. Only return the improved text, without any explanation or preamble:\n\n---\n${selectedText}`;
+            }
+            break;
+        default:
+            showLoading(false);
+            return;
+    }
+
+    try {
+        const result = await callGeminiAPI(prompt, { temperature: 0.5, maxOutputTokens: 2048 });
+        if (result && result.candidates && result.candidates.length > 0) {
+            const replacementText = result.candidates[0].content.parts[0].text;
+            replaceSelectedText(replacementText);
+        } else {
+            throw new Error("AI did not return a valid response.");
+        }
+    } catch (error) {
+        console.error(`Error performing contextual action "${action}":`, error);
+        showNotification(`AI action failed: ${error.message}`, 'error');
+    } finally {
+        showLoading(false);
     }
 }
 

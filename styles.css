@@ -1239,6 +1239,75 @@ body {
     margin-left: 0.5rem;
 }
 
+.contextual-menu {
+    position: absolute;
+    display: none;
+    background: var(--bg-quaternary);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    z-index: 1001;
+    padding: 0.25rem;
+    display: flex;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+}
+
+.contextual-menu button {
+    background: var(--bg-tertiary);
+    border: none;
+    color: var(--text-secondary);
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: var(--transition-fast);
+    white-space: nowrap;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.contextual-menu button:hover {
+    background: var(--primary);
+    color: white;
+}
+
+.contextual-menu .menu-separator {
+    width: 1px;
+    background-color: var(--border-light);
+    margin: 0.25rem 0;
+}
+
+.contextual-menu-dropdown {
+    position: relative;
+}
+
+.contextual-menu-dropdown > button::after {
+    content: ' \f0d7'; /* FontAwesome chevron-down */
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    margin-left: 0.5em;
+}
+
+.contextual-menu-dropdown-content {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 5px);
+    left: 0;
+    background-color: var(--bg-quaternary);
+    min-width: 100%;
+    box-shadow: var(--shadow-lg);
+    z-index: 1;
+    border-radius: var(--radius);
+    padding: 0.25rem;
+    border: 1px solid var(--border-light);
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.contextual-menu-dropdown:hover .contextual-menu-dropdown-content {
+    display: flex;
+}
+
 .template-list-modal {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));

@@ -1164,6 +1164,74 @@ body {
     background: none;
 }
 
+.code-block-wrapper {
+    position: relative;
+}
+
+.code-block-wrapper .copy-code-btn {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    background: var(--bg-quaternary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius);
+    padding: 0.35rem 0.6rem;
+    cursor: pointer;
+    opacity: 0;
+    transition: var(--transition-fast);
+    z-index: 1;
+}
+
+.code-block-wrapper:hover .copy-code-btn {
+    opacity: 1;
+}
+
+.code-block-wrapper .copy-code-btn:hover {
+    background: var(--primary);
+    color: white;
+}
+
+.note-preview pre.line-numbered {
+    padding: 1rem 0;
+    overflow-x: hidden;
+}
+
+.note-preview pre.line-numbered code {
+    padding: 0;
+}
+
+.note-preview pre.line-numbered ol {
+    list-style: none;
+    counter-reset: line-number;
+    margin: 0;
+    padding: 0;
+}
+
+.note-preview pre.line-numbered li {
+    counter-increment: line-number;
+    position: relative;
+    padding-left: 4em;
+    white-space: pre-wrap;
+    word-break: break-all;
+    line-height: 1.5;
+}
+
+.note-preview pre.line-numbered li::before {
+    content: counter(line-number);
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 3em;
+    padding-right: 1em;
+    text-align: right;
+    color: var(--text-tertiary);
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
 .note-preview blockquote {
     border-left: 4px solid var(--primary);
     padding-left: 1rem;

@@ -713,7 +713,86 @@ html, .theme-dusk {
     --bg-primary: #0d1c15; --bg-secondary: #12291d; --bg-tertiary: #20402e;
     --text-primary: #e6f7ed; --text-secondary: #a3d9b8; --border: #2c5942;
 }
-
+.theme-slate {
+    --primary: #64748b; --primary-dark: #475569;
+    --bg-primary: #0f172a; --bg-secondary: #1e293b; --bg-tertiary: #334155;
+    --text-primary: #f1f5f9; --text-secondary: #cbd5e1; --border: #475569;
+}
+.theme-forest {
+    --primary: #16a34a; --primary-dark: #15803d;
+    --bg-primary: #1c1917; --bg-secondary: #292524; --bg-tertiary: #44403c;
+    --text-primary: #f5f5f4; --text-secondary: #d6d3d1; --border: #57534e;
+}
+.theme-rose {
+    --primary: #e11d48; --primary-dark: #be123c;
+    --bg-primary: #1f1d2b; --bg-secondary: #26233a; --bg-tertiary: #3e3a59;
+    --text-primary: #e0def4; --text-secondary: #908caa; --border: #4a4867;
+}
+.theme-ocean {
+    --primary: #0ea5e9; --primary-dark: #0284c7;
+    --bg-primary: #0c1427; --bg-secondary: #121c33; --bg-tertiary: #21304f;
+    --text-primary: #eaf3ff; --text-secondary: #a8bfe0; --border: #2e4166;
+}
+.theme-amethyst {
+    --primary: #9333ea; --primary-dark: #7e22ce;
+    --bg-primary: #181622; --bg-secondary: #232033; --bg-tertiary: #3b3752;
+    --text-primary: #ede9fe; --text-secondary: #d8b4fe; --border: #4c4866;
+}
+.theme-sunset {
+    --primary: #ea580c; --primary-dark: #c2410c;
+    --bg-primary: #201a18; --bg-secondary: #2f2724; --bg-tertiary: #4b403c;
+    --text-primary: #fff1ec; --text-secondary: #fecba1; --border: #5c4f4a;
+}
+.theme-dusk {
+    --primary: #4f46e5; --primary-dark: #4338ca;
+    --bg-primary: #111827; --bg-secondary: #1f2937; --bg-tertiary: #374151;
+    --text-primary: #f3f4f6; --text-secondary: #d1d5db; --border: #4b5563;
+}
+.theme-mint {
+    --primary: #10b981; --primary-dark: #059669;
+    --bg-primary: #0d1c15; --bg-secondary: #12291d; --bg-tertiary: #20402e;
+    --text-primary: #e6f7ed; --text-secondary: #a3d9b8; --border: #2c5942;
+}
+.theme-merlot {
+    --primary: #be185d; --primary-dark: #9d174d;
+    --bg-primary: #26161d; --bg-secondary: #3b222c; --bg-tertiary: #52313f;
+    --text-primary: #fce7f3; --text-secondary: #f9a8d4; --border: #6b4155;
+}
+.theme-olive {
+    --primary: #65a30d; --primary-dark: #4d7c0f;
+    --bg-primary: #1a201c; --bg-secondary: #262e28; --bg-tertiary: #3d4a41;
+    --text-primary: #ecfccb; --text-secondary: #a3e635; --border: #4c5d53;
+}
+.theme-cyber {
+    --primary: #0891b2; --primary-dark: #0e7490;
+    --bg-primary: #0c1a2e; --bg-secondary: #112546; --bg-tertiary: #1e3a63;
+    --text-primary: #e0f2fe; --text-secondary: #7dd3fc; --border: #2a4c7a;
+}
+.theme-espresso {
+    --primary: #a16207; --primary-dark: #854d0e;
+    --bg-primary: #211e1a; --bg-secondary: #312c27; --bg-tertiary: #4c443c;
+    --text-primary: #fefce8; --text-secondary: #fde047; --border: #5d544b;
+}
+.theme-arctic {
+    --primary: #3b82f6; --primary-dark: #2563eb;
+    --bg-primary: #1e293b; --bg-secondary: #293548; --bg-tertiary: #3e4c63;
+    --text-primary: #eff6ff; --text-secondary: #93c5fd; --border: #4a5a75;
+}
+.theme-sandstone {
+    --primary: #ca8a04; --primary-dark: #a16207;
+    --bg-primary: #282217; --bg-secondary: #3c3423; --bg-tertiary: #564b33;
+    --text-primary: #fef9c3; --text-secondary: #fde047; --border: #6a5c40;
+}
+.theme-monochrome {
+    --primary: #a1a1aa; --primary-dark: #71717a;
+    --bg-primary: #18181b; --bg-secondary: #27272a; --bg-tertiary: #3f3f46;
+    --text-primary: #f4f4f5; --text-secondary: #d4d4d8; --border: #52525b;
+}
+.theme-bronze {
+    --primary: #b45309; --primary-dark: #92400e;
+    --bg-primary: #281e18; --bg-secondary: #402f26; --bg-tertiary: #5d4437;
+    --text-primary: #fff7ed; --text-secondary: #fed7aa; --border: #715546;
+}
 
 .theme-switcher-container {
     padding: 1rem 0.5rem;
@@ -722,8 +801,8 @@ html, .theme-dusk {
     justify-content: center;
     gap: 0.75rem;
     flex-wrap: wrap;
-    max-width: 130px; /* This forces the 4x2 grid layout */
-    margin: 0 auto; /* This centers the container itself */
+    max-width: 150px;
+    margin: 0 auto;
 }
 
 .theme-swatch {

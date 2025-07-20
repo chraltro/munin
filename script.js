@@ -15,14 +15,22 @@ let state = {
 };
 
 const THEMES = [
-    { name: 'Dusk', className: 'theme-dusk', gradient: ['#6366f1', '#8b5cf6'] },
-    { name: 'Forest', className: 'theme-forest', gradient: ['#22c55e', '#4ade80'] },
-    { name: 'Rose', className: 'theme-rose', gradient: ['#f43f5e', '#f97316'] },
-    { name: 'Ocean', className: 'theme-ocean', gradient: ['#38bdf8', '#4ade80'] },
-    { name: 'Amethyst', className: 'theme-amethyst', gradient: ['#a855f7', '#f43f5e'] },
     { name: 'Slate', className: 'theme-slate', gradient: ['#64748b', '#94a3b8'] },
-    { name: 'Sunset', className: 'theme-sunset', gradient: ['#f97316', '#facc15'] },
-    { name: 'Mint', className: 'theme-mint', gradient: ['#4ade80', '#38bdf8'] },
+    { name: 'Dusk', className: 'theme-dusk', gradient: ['#4f46e5', '#7c3aed'] },
+    { name: 'Forest', className: 'theme-forest', gradient: ['#16a34a', '#65a30d'] },
+    { name: 'Rose', className: 'theme-rose', gradient: ['#be185d', '#e11d48'] },
+    { name: 'Ocean', className: 'theme-ocean', gradient: ['#0ea5e9', '#0891b2'] },
+    { name: 'Amethyst', className: 'theme-amethyst', gradient: ['#9333ea', '#be185d'] },
+    { name: 'Sunset', className: 'theme-sunset', gradient: ['#ea580c', '#ca8a04'] },
+    { name: 'Mint', className: 'theme-mint', gradient: ['#10b981', '#16a34a'] },
+    { name: 'Merlot', className: 'theme-merlot', gradient: ['#be185d', '#9d174d'] },
+    { name: 'Olive', className: 'theme-olive', gradient: ['#65a30d', '#4d7c0f'] },
+    { name: 'Cyber', className: 'theme-cyber', gradient: ['#0891b2', '#2563eb'] },
+    { name: 'Espresso', className: 'theme-espresso', gradient: ['#a16207', '#854d0e'] },
+    { name: 'Arctic', className: 'theme-arctic', gradient: ['#3b82f6', '#60a5fa'] },
+    { name: 'Sandstone', className: 'theme-sandstone', gradient: ['#ca8a04', '#b45309'] },
+    { name: 'Monochrome', className: 'theme-monochrome', gradient: ['#a1a1aa', '#71717a'] },
+    { name: 'Bronze', className: 'theme-bronze', gradient: ['#b45309', '#92400e'] },
 ];
 
 const loginScreen = document.getElementById('loginScreen');

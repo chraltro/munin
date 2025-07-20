@@ -506,6 +506,16 @@ header h1 {
     margin-bottom: 0.75rem;
 }
 
+.note-preview a {
+    color: var(--primary);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.note-preview a:hover {
+    text-decoration: none;
+}
+
 .note-preview code {
     background: var(--bg-tertiary);
     padding: 0.125rem 0.25rem;

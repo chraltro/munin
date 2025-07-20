@@ -222,7 +222,6 @@ function setupEventListeners() {
         }
     });
     
-    // --- NEW: Intercept clicks inside the AI response modal ---
     aiResponseOutput.addEventListener('click', (e) => {
         const link = e.target.closest('a');
         if (link && link.getAttribute('href')?.startsWith('app://note/')) {
@@ -558,7 +557,10 @@ Now, analyze all the provided data and return the single JSON object for the cor
         switch (tool) {
             case 'ANSWER_QUESTION':
                 if (!args || !args.answer) throw new Error("AI chose ANSWER_QUESTION but provided no answer.");
-                aiResponseOutput.innerHTML = DOMPurify.sanitize(marked.parse(args.answer));
+                const sanitizedHtml = DOMPurify.sanitize(marked.parse(args.answer), {
+                    ALLOWED_SCHEMES: [...DOMPurify.defaults.ALLOWED_SCHEMES, 'app']
+                });
+                aiResponseOutput.innerHTML = sanitizedHtml;
                 aiResponseModal.style.display = 'flex';
                 break;
 
@@ -847,7 +849,10 @@ function setEditorMode(mode) {
         editModeBtn.classList.remove('active');
         previewModeBtn.classList.add('active');
         const html = marked.parse(noteEditor.value);
-        notePreview.innerHTML = DOMPurify.sanitize(html);
+        const sanitizedHtml = DOMPurify.sanitize(html, {
+            ALLOWED_SCHEMES: [...DOMPurify.defaults.ALLOWED_SCHEMES, 'app']
+        });
+        notePreview.innerHTML = sanitizedHtml;
     }
 }
 

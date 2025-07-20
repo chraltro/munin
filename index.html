@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Fira+Code&family=Inter:wght@400;600&family=JetBrains+Mono&family=Lato&family=Lora&family=Merriweather&family=Nunito&family=Open+Sans&family=Roboto&family=Source+Serif+Pro&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Fira+Code&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono&family=Lato&family=Lora&family=Merriweather&family=Nunito&family=Open+Sans&family=Roboto&family=Source+Serif+Pro&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -17,37 +17,62 @@
 </head>
 
 <body>
-    <!-- Login Screen -->
     <div id="loginScreen" class="login-container">
         <div class="login-box">
-            <h1><i class="fas fa-brain"></i> Chrisidian</h1>
-            <p>AI-Powered Markdown Notes</p>
-            <form id="loginForm">
-                <input type="password" id="password" placeholder="Enter password" required>
-                <input type="text" id="geminiKey" placeholder="Gemini API Key" required>
-                <input type="text" id="githubToken" placeholder="GitHub Personal Access Token" required>
-                <button type="submit">Login</button>
+            <div class="login-header">
+                <div class="logo">
+                    <i class="fas fa-brain"></i>
+                    <h1>Chrisidian</h1>
+                </div>
+                <p class="tagline">AI-Powered Markdown Notes</p>
+            </div>
+            <form id="loginForm" class="login-form">
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" placeholder="Enter your password" required>
+                </div>
+                <div class="form-group">
+                    <label for="geminiKey">Gemini API Key</label>
+                    <input type="text" id="geminiKey" placeholder="Enter your API key" required>
+                </div>
+                <div class="form-group">
+                    <label for="githubToken">GitHub Token</label>
+                    <input type="text" id="githubToken" placeholder="Enter your GitHub token" required>
+                </div>
+                <button type="submit" class="login-btn">
+                    <span>Sign In</span>
+                    <i class="fas fa-arrow-right"></i>
+                </button>
             </form>
-            <p class="setup-hint">First time? Check the README before deploying!</p>
-            <p id="securityWarning" style="color: #ef4444; margin-top: 1rem; display: none;">
-                ⚠️ Using default password! Change hash in script.js before deploying!
-            </p>
+            <div class="login-footer">
+                <p class="setup-hint">First time? Check the README before deploying!</p>
+                <p id="securityWarning" class="security-warning" style="display: none;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Using default password! Change hash in script.js before deploying!
+                </p>
+            </div>
         </div>
     </div>
 
-    <!-- Main App -->
     <div id="mainApp" class="app-container" style="display: none;">
-        <!-- Header -->
-        <header>
-            <h1><i class="fas fa-brain"></i> Chrisidian</h1>
-            <button id="logoutBtn" class="logout-btn">
-                <i class="fas fa-sign-out-alt"></i> Logout
-            </button>
+        <header class="app-header">
+            <div class="header-brand">
+                <i class="fas fa-brain"></i>
+                <h1>Chrisidian</h1>
+            </div>
+            <div class="header-actions">
+                <div id="saveStatus" class="save-status">
+                    <i class="fas fa-check-circle"></i>
+                    <span>Saved</span>
+                </div>
+                <button id="logoutBtn" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </button>
+            </div>
         </header>
 
-        <!-- Main Content -->
         <div class="main-content">
-            <!-- Sidebar -->
             <aside class="sidebar">
                 <div class="sidebar-header">
                     <button id="changeThemeBtn" class="icon-btn" title="Change Theme">
@@ -61,57 +86,63 @@
                         <i class="fas fa-folder-plus"></i>
                     </button>
                 </div>
-                <div id="folderList" class="folder-list desktop-only">
-                    <!-- Folders will be dynamically added here -->
-                </div>
+                <div id="folderList" class="folder-list desktop-only"></div>
             </aside>
 
-            <!-- Notes Area -->
             <main class="notes-area">
-                <!-- Notes List -->
                 <div class="notes-container">
                     <div class="notes-header">
                         <h2 id="currentFolderName">All Notes</h2>
-                        <input type="search" id="searchInput" class="search-input" placeholder="Search notes...">
-                        <button id="newNoteBtn" class="icon-btn" title="New Note">
+                        <div class="search-container">
+                            <input type="search" id="searchInput" class="search-input" placeholder="Search notes...">
+                            <i class="fas fa-search search-icon"></i>
+                        </div>
+                        <button id="newNoteBtn" class="icon-btn primary" title="New Note">
                             <i class="fas fa-plus"></i>
                         </button>
                     </div>
-                    <div id="notesList" class="notes-list">
-                        <!-- Notes will be dynamically added here -->
-                    </div>
+                    <div id="notesList" class="notes-list"></div>
                 </div>
 
-                <!-- Input Bar -->
                 <div class="input-bar">
-                    <input type="text" id="commandInput" placeholder='Try: "Add a new idea: ..." or "Who was..."'>
-                    <button id="processBtn" class="process-btn">
-                        <i class="fas fa-magic"></i> Process
-                    </button>
+                    <div class="input-container">
+                        <input type="text" id="commandInput" placeholder='Try: "Add a new idea: ..." or "Who was..."'>
+                        <button id="processBtn" class="process-btn">
+                            <i class="fas fa-magic"></i>
+                            <span>Process</span>
+                        </button>
+                    </div>
                 </div>
             </main>
 
-            <!-- Editor Panel -->
-            <aside class="editor-panel" id="editorPanel" style="display: none;">
+            <aside class="editor-panel" id="editorPanel">
                 <div class="editor-header">
-                    <input type="text" id="noteTitle" placeholder="Note Title">
+                    <input type="text" id="noteTitle" placeholder="Untitled Note">
                     <button id="closeEditorBtn" class="icon-btn">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
                 <div class="editor-toolbar">
-                    <button id="editModeBtn" class="toolbar-btn">
-                        <i class="fas fa-edit"></i> Edit
-                    </button>
-                    <button id="previewModeBtn" class="toolbar-btn active">
-                        <i class="fas fa-eye"></i> Preview
-                    </button>
-                    <button id="saveNoteBtn" class="toolbar-btn primary">
-                        <i class="fas fa-save"></i> Save
-                    </button>
-                    <button id="deleteNoteBtn" class="toolbar-btn danger">
-                        <i class="fas fa-trash"></i> Delete
-                    </button>
+                    <div class="toolbar-group">
+                        <button id="editModeBtn" class="toolbar-btn">
+                            <i class="fas fa-edit"></i>
+                            <span>Edit</span>
+                        </button>
+                        <button id="previewModeBtn" class="toolbar-btn active">
+                            <i class="fas fa-eye"></i>
+                            <span>Preview</span>
+                        </button>
+                    </div>
+                    <div class="toolbar-group">
+                        <button id="saveNoteBtn" class="toolbar-btn primary">
+                            <i class="fas fa-save"></i>
+                            <span>Save</span>
+                        </button>
+                        <button id="deleteNoteBtn" class="toolbar-btn danger">
+                            <i class="fas fa-trash"></i>
+                            <span>Delete</span>
+                        </button>
+                    </div>
                 </div>
                 <textarea id="noteEditor" placeholder="Write your note in Markdown..."></textarea>
                 <div id="notePreview" class="note-preview"></div>
@@ -121,45 +152,73 @@
             </aside>
         </div>
 
-        <!-- AI Response Modal -->
         <div id="aiResponseModal" class="modal-overlay" style="display: none;">
             <div class="modal-content">
-                <button id="closeAiResponseBtn" class="modal-close-btn">×</button>
-                <div id="aiResponseOutput" class="note-preview"></div>
+                <div class="modal-header">
+                    <h3>AI Response</h3>
+                    <button id="closeAiResponseBtn" class="modal-close-btn">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div id="aiResponseOutput" class="note-preview modal-body"></div>
             </div>
         </div>
 
-        <!-- Loading Overlay -->
         <div id="loadingOverlay" class="loading-overlay" style="display: none;">
-            <div class="spinner"></div>
-            <p>Processing with AI...</p>
+            <div class="loading-content">
+                <div class="spinner">
+                    <div class="spinner-blade"></div>
+                    <div class="spinner-blade"></div>
+                    <div class="spinner-blade"></div>
+                    <div class="spinner-blade"></div>
+                    <div class="spinner-blade"></div>
+                    <div class="spinner-blade"></div>
+                    <div class="spinner-blade"></div>
+                    <div class="spinner-blade"></div>
+                    <div class="spinner-blade"></div>
+                    <div class="spinner-blade"></div>
+                    <div class="spinner-blade"></div>
+                    <div class="spinner-blade"></div>
+                </div>
+                <p class="loading-text">Processing with AI...</p>
+            </div>
         </div>
     </div>
 
     <div id="themeModal" class="modal-overlay" style="display: none;">
         <div class="modal-content">
-            <button id="closeThemeModalBtn" class="modal-close-btn">×</button>
-            <h2>Select a Theme</h2>
-            <div id="themeModalGrid" class="theme-grid"></div>
-            <hr class="modal-divider">
-            <h3>Typography</h3>
-            <div class="typography-controls">
-                <div class="control-group">
-                    <label for="fontFamilySelector">Font</label>
-                    <select id="fontFamilySelector"></select>
+            <div class="modal-header">
+                <h3>Customize Appearance</h3>
+                <button id="closeThemeModalBtn" class="modal-close-btn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="settings-section">
+                    <h4>Theme</h4>
+                    <div id="themeModalGrid" class="theme-grid"></div>
                 </div>
-                <div class="control-group">
-                    <label for="fontSizeSlider">Font Size</label>
-                    <div class="slider-container">
-                        <input type="range" id="fontSizeSlider" min="12" max="22" step="1">
-                        <span id="fontSizeValue">16px</span>
-                    </div>
-                </div>
-                <div class="control-group">
-                    <label for="lineHeightSlider">Line Spacing</label>
-                    <div class="slider-container">
-                        <input type="range" id="lineHeightSlider" min="1.2" max="2.0" step="0.1">
-                        <span id="lineHeightValue">1.6</span>
+                <div class="settings-section">
+                    <h4>Typography</h4>
+                    <div class="typography-controls">
+                        <div class="control-group">
+                            <label for="fontFamilySelector">Font Family</label>
+                            <select id="fontFamilySelector"></select>
+                        </div>
+                        <div class="control-group">
+                            <label for="fontSizeSlider">Font Size</label>
+                            <div class="slider-container">
+                                <input type="range" id="fontSizeSlider" min="12" max="22" step="1">
+                                <span id="fontSizeValue">16px</span>
+                            </div>
+                        </div>
+                        <div class="control-group">
+                            <label for="lineHeightSlider">Line Spacing</label>
+                            <div class="slider-container">
+                                <input type="range" id="lineHeightSlider" min="1.2" max="2.0" step="0.1">
+                                <span id="lineHeightValue">1.6</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

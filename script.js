@@ -24,7 +24,9 @@ let state = {
     currentNote: null,
     gistId: null,
     isNoteDirty: false,
-    originalNoteContent: '' // Used to check if content changed for embedding
+    originalNoteContent: '', // Used to check if content changed for embedding
+    isSemanticSearching: false, // --- NEW: Track semantic search state
+    saveTimeout: null // --- NEW: To manage the save button's "Saved!" state
 };
 
 const THEMES = [
@@ -198,7 +200,22 @@ function setupEventListeners() {
     saveNoteBtn.addEventListener('click', saveCurrentNote);
     deleteNoteBtn.addEventListener('click', deleteCurrentNote);
     closeEditorBtn.addEventListener('click', closeEditor);
-    searchInput.addEventListener('input', renderNotes);
+    
+    // --- UPDATED: Search input listeners ---
+    searchInput.addEventListener('input', () => {
+        // If user clears the input, reset the view
+        if (searchInput.value.trim() === '') {
+            clearSemanticSearch();
+        } else {
+            renderNotes(); // Normal keyword filtering while typing
+        }
+    });
+    searchInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            performSemanticSearch();
+        }
+    });
+    
     toggleHeaderBtn.addEventListener('click', toggleEditorHeader);
     closeAiResponseBtn.addEventListener('click', () => aiResponseModal.style.display = 'none');
     aiResponseModal.addEventListener('click', (e) => {
@@ -358,7 +375,7 @@ async function saveData() {
 }
 
 async function callGeminiAPI(prompt, generationConfig) {
-    const modelsToTry = ['gemini-2.5-flash', 'gemini-1.5-flash'];
+    const modelsToTry = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-1.5-flash'];
     let lastError = null;
 
     for (const model of modelsToTry) {
@@ -598,6 +615,40 @@ Now, analyze all the provided data and return the single JSON object for the cor
     }
 }
 
+// --- NEW: Perform semantic search on the main search bar ---
+async function performSemanticSearch() {
+    const query = searchInput.value.trim();
+    if (!query) return;
+
+    showLoading(true, 'Semantic Search...');
+    state.isSemanticSearching = true;
+
+    try {
+        const relevantNotes = await findSemanticallyRelevantNotes(query, 10); // Show top 10 results
+        renderNotes(relevantNotes); // Re-render the list with only these notes
+        
+        currentFolderName.innerHTML = `Semantic Results 
+            <button id="clearSearchBtn" title="Clear Semantic Search">
+                <i class="fas fa-times-circle"></i>
+            </button>`;
+        document.getElementById('clearSearchBtn').addEventListener('click', clearSemanticSearch);
+
+    } catch (error) {
+        console.error("Error during semantic search:", error);
+        alert("Semantic search failed. Please check the console.");
+        clearSemanticSearch();
+    } finally {
+        showLoading(false);
+    }
+}
+
+function clearSemanticSearch() {
+    state.isSemanticSearching = false;
+    searchInput.value = '';
+    selectFolder(state.currentFolder); // This will reset the view and title
+}
+
+
 function renderFolders() {
     folderList.innerHTML = `
         <div class="folder-item ${state.currentFolder === 'All Notes' ? 'active' : ''}" onclick="selectFolder('All Notes')">
@@ -640,20 +691,27 @@ function renderFolders() {
     mobileFolderSelector.value = state.currentFolder;
 }
 
-function renderNotes() {
-    let notesToDisplay = state.currentFolder === 'All Notes'
-        ? state.notes
-        : state.notes.filter(n => n.folder === state.currentFolder);
+function renderNotes(notesToShow = null) {
+    let notesToDisplay;
 
-    const searchTerm = searchInput.value.toLowerCase().trim();
-    if (searchTerm) {
-        notesToDisplay = notesToDisplay.filter(note =>
-            note.title.toLowerCase().includes(searchTerm) ||
-            note.content.toLowerCase().includes(searchTerm)
-        );
+    if (notesToShow) {
+        // If specific notes are passed (e.g., from semantic search), use them
+        notesToDisplay = notesToShow;
+    } else {
+        // Otherwise, perform default folder and keyword filtering
+        notesToDisplay = state.currentFolder === 'All Notes'
+            ? state.notes
+            : state.notes.filter(n => n.folder === state.currentFolder);
+
+        const searchTerm = searchInput.value.toLowerCase().trim();
+        if (searchTerm) {
+            notesToDisplay = notesToDisplay.filter(note =>
+                note.title.toLowerCase().includes(searchTerm) ||
+                note.content.toLowerCase().includes(searchTerm)
+            );
+        }
+        notesToDisplay.sort((a, b) => new Date(b.modified) - new Date(a.modified));
     }
-
-    notesToDisplay.sort((a, b) => new Date(b.modified) - new Date(a.modified));
 
     notesList.innerHTML = '';
     if (notesToDisplay.length === 0) {
@@ -678,7 +736,9 @@ function renderNotes() {
     });
 }
 
+
 function selectFolder(folder) {
+    state.isSemanticSearching = false;
     state.currentFolder = folder;
     currentFolderName.textContent = folder;
     searchInput.value = '';
@@ -785,6 +845,7 @@ function setDirtyState(isDirty) {
 
 async function saveCurrentNote() {
     if (!state.currentNote) return;
+    if (state.saveTimeout) clearTimeout(state.saveTimeout);
 
     const noteIndex = state.notes.findIndex(n => n.id === state.currentNote.id);
     if (noteIndex === -1) return;
@@ -804,7 +865,6 @@ async function saveCurrentNote() {
         state.notes[noteIndex].embedding = newEmbedding;
     }
     
-    // *** BUG FIX: Always update originalNoteContent after any successful save ***
     state.originalNoteContent = newContent; 
     state.currentNote = state.notes[noteIndex];
     
@@ -813,7 +873,7 @@ async function saveCurrentNote() {
     setDirtyState(false); 
     
     saveNoteBtn.innerHTML = '<i class="fas fa-check"></i> Saved!';
-    setTimeout(() => {
+    state.saveTimeout = setTimeout(() => {
         saveNoteBtn.innerHTML = SAVE_BUTTON_DEFAULT_HTML;
     }, 2000);
 }

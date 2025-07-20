@@ -298,6 +298,27 @@ header h1 {
     margin-bottom: 1rem;
 }
 
+.notes-header h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+#clearSearchBtn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0.2rem;
+    border-radius: 50%;
+    line-height: 1;
+}
+#clearSearchBtn:hover {
+    color: var(--primary);
+    background-color: var(--bg-tertiary);
+}
+
+
 .search-input {
     flex-grow: 1;
     padding: 0.5rem 0.75rem;

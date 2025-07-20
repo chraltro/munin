@@ -785,7 +785,61 @@ function renderSanitizedHTML(markdownContent) {
     // Allow checklists to be interactive by removing the 'disabled' attribute.
     html = html.replace(/ disabled=""/g, '');
 
-    return DOMPurify.sanitize(html, { ADD_ATTR: ['data-note-id', 'class', 'data-tag-name'] });
+    return DOMPurify.sanitize(html, { ADD_ATTR: ['data-note-id', 'class', 'data-tag-name'], ADD_TAGS: ['ol', 'li'] });
+}
+
+function enhanceCodeBlocks(container) {
+    container.querySelectorAll('pre > code').forEach(codeBlock => {
+        const pre = codeBlock.parentElement;
+        if (pre.parentElement.classList.contains('code-block-wrapper')) {
+            return; // Already enhanced
+        }
+
+        const codeToCopy = codeBlock.textContent;
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'code-block-wrapper';
+        
+        pre.parentNode.replaceChild(wrapper, pre);
+        wrapper.appendChild(pre);
+
+        const copyButton = document.createElement('button');
+        copyButton.className = 'copy-code-btn';
+        copyButton.title = 'Copy code';
+        copyButton.innerHTML = '<i class="fas fa-copy"></i>';
+        wrapper.appendChild(copyButton);
+        copyButton.addEventListener('click', () => {
+            navigator.clipboard.writeText(codeToCopy).then(() => {
+                showNotification('Code copied to clipboard!', 'success');
+            }, () => {
+                showNotification('Failed to copy code.', 'error');
+            });
+        });
+
+        // Use innerHTML to preserve syntax highlighting
+        const linesHtml = codeBlock.innerHTML.split('\n');
+        
+        // If the last line is empty, it's from a trailing newline, remove it.
+        if (linesHtml.length > 0 && linesHtml[linesHtml.length - 1].trim() === '') {
+            linesHtml.pop();
+        }
+
+        // Don't add line numbers to empty or single-line-empty code blocks
+        if (linesHtml.length === 0 || (linesHtml.length === 1 && linesHtml[0].trim() === '')) {
+            return;
+        }
+
+        const ol = document.createElement('ol');
+        linesHtml.forEach(lineHtml => {
+            const li = document.createElement('li');
+            li.innerHTML = lineHtml || '&nbsp;'; // Use non-breaking space for empty lines
+            ol.appendChild(li);
+        });
+        
+        codeBlock.innerHTML = '';
+        codeBlock.appendChild(ol);
+        pre.classList.add('line-numbered');
+    });
 }
 
 async function processCommand() {
@@ -850,6 +904,7 @@ async function executeAITool(tool, args) {
                 throw new Error("AI chose ANSWER_QUESTION but provided no answer.");
             }
             elements.aiResponseOutput.innerHTML = renderSanitizedHTML(args.answer);
+            enhanceCodeBlocks(elements.aiResponseOutput);
             elements.aiResponseModal.style.display = 'flex';
             updateSaveStatus('Answer ready', 'success');
             break;
@@ -1604,6 +1659,7 @@ function setEditorMode(mode) {
             contentToRender = scaleRecipeContent(contentToRender, state.baseServings, state.currentServings);
         }
         elements.notePreview.innerHTML = renderSanitizedHTML(contentToRender);
+        enhanceCodeBlocks(elements.notePreview);
     }
     handleEditorSelectionChange();
 }

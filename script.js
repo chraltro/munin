@@ -2112,29 +2112,33 @@ function populateContextualMenu() {
 function handleEditorMouseUp(e) {
     // We use a small timeout to let the selection event finalize
     setTimeout(() => {
-        const selection = window.getSelection();
-        const selectedText = selection.toString().trim();
+        const editor = elements.noteEditor;
+        const selectionText = editor.value.substring(editor.selectionStart, editor.selectionEnd);
         const menu = elements.contextualMenu;
 
-        if (selectedText.length > 10) { // Only show for reasonably long selections
-            const range = selection.getRangeAt(0);
-            const rect = range.getBoundingClientRect();
-            const editorPanelRect = elements.editorPanel.getBoundingClientRect();
-
+        if (selectionText.trim().length > 10) { // Only show for reasonably long selections
             populateContextualMenu();
-            menu.style.display = 'flex';
 
-            let top = rect.top - editorPanelRect.top - menu.offsetHeight - 10;
-            let left = rect.left - editorPanelRect.left + (rect.width / 2) - (menu.offsetWidth / 2);
+            const coords = getCaretCoordinates(editor, editor.selectionStart);
+            const editorPanelRect = elements.editorPanel.getBoundingClientRect();
+            
+            // Must be displayed to get offsetWidth
+            menu.style.display = 'flex';
+            
+            let top = coords.top - menu.offsetHeight - 10;
+            let left = coords.left;
 
             // Boundary checks
-            if (top < 10) { // If it's too close to the top, move it below
-                top = rect.bottom - editorPanelRect.top + 10;
+            if (top < 10) { // If it's too close to the top, move it below the selection
+                const endCoords = getCaretCoordinates(editor, editor.selectionEnd);
+                top = endCoords.top + coords.height + 10;
             }
+
             if (left < 10) {
                 left = 10;
             }
-            if ((left + menu.offsetWidth) > editorPanelRect.width) {
+
+            if ((left + menu.offsetWidth) > editorPanelRect.width - 10) {
                 left = editorPanelRect.width - menu.offsetWidth - 10;
             }
 
@@ -2164,9 +2168,10 @@ function replaceSelectedText(replacement) {
     const start = editor.selectionStart;
     const end = editor.selectionEnd;
 
-    // This is a more robust way to handle programmatic changes for undo/redo
-    document.execCommand('insertText', false, replacement);
+    // Manually update the value. This doesn't preserve undo history like the deprecated execCommand, but is more reliable.
+    editor.value = editor.value.substring(0, start) + replacement + editor.value.substring(end);
     
+    // Re-select the newly inserted text
     editor.selectionStart = start;
     editor.selectionEnd = start + replacement.length;
 

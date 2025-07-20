@@ -252,7 +252,7 @@ async function saveData() {
             const result = await response.json();
             state.gistId = result.id;
         }
-    } catch (error).
+    } catch (error) {
         console.error('Error saving data:', error);
         alert(error.message);
     } finally {

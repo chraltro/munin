@@ -57,6 +57,7 @@
                 <div class="notes-container">
                     <div class="notes-header">
                         <h2 id="currentFolderName">All Notes</h2>
+                        <input type="search" id="searchInput" class="search-input" placeholder="Search notes...">
                         <button id="newNoteBtn" class="icon-btn" title="New Note">
                             <i class="fas fa-plus"></i>
                         </button>
@@ -99,6 +100,9 @@
                 </div>
                 <textarea id="noteEditor" placeholder="Write your note in Markdown..." style="display: none;"></textarea>
                 <div id="notePreview" class="note-preview"></div>
+                <button id="toggleHeaderBtn" class="fab-btn" style="display: none;">
+                    <i class="fas fa-compress-alt"></i>
+                </button>
             </aside>
         </div>
 

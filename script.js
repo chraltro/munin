@@ -38,6 +38,8 @@ const saveNoteBtn = document.getElementById('saveNoteBtn');
 const deleteNoteBtn = document.getElementById('deleteNoteBtn');
 const closeEditorBtn = document.getElementById('closeEditorBtn');
 const loadingOverlay = document.getElementById('loadingOverlay');
+const searchInput = document.getElementById('searchInput');
+const toggleHeaderBtn = document.getElementById('toggleHeaderBtn');
 
 document.addEventListener('DOMContentLoaded', () => {
     if (APP_CONFIG.passwordHash === '7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069') {
@@ -45,7 +47,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const warning = document.getElementById('securityWarning');
         if (warning) warning.style.display = 'block';
     }
-
     checkAutoLogin();
     setupEventListeners();
 });
@@ -125,14 +126,26 @@ function setupEventListeners() {
     saveNoteBtn.addEventListener('click', saveCurrentNote);
     deleteNoteBtn.addEventListener('click', deleteCurrentNote);
     closeEditorBtn.addEventListener('click', closeEditor);
+    searchInput.addEventListener('input', renderNotes);
+    toggleHeaderBtn.addEventListener('click', toggleEditorHeader);
+}
+
+function toggleEditorHeader() {
+    editorPanel.classList.toggle('header-collapsed');
+    const icon = toggleHeaderBtn.querySelector('i');
+    if (editorPanel.classList.contains('header-collapsed')) {
+        icon.classList.remove('fa-compress-alt');
+        icon.classList.add('fa-expand-alt');
+    } else {
+        icon.classList.remove('fa-expand-alt');
+        icon.classList.add('fa-compress-alt');
+    }
 }
 
 async function testGeminiAPI() {
     try {
         const testPrompt = 'Say "Hello World" in JSON format: {"message": "Hello World"}';
         const result = await callGeminiAPI(testPrompt, { maxOutputTokens: 50 });
-
-        console.log('Gemini API test response:', result);
         if (result && result.candidates) {
             return result;
         }
@@ -239,7 +252,7 @@ async function saveData() {
             const result = await response.json();
             state.gistId = result.id;
         }
-    } catch (error) {
+    } catch (error).
         console.error('Error saving data:', error);
         alert(error.message);
     } finally {
@@ -457,7 +470,7 @@ function renderFolders() {
             <i class="fas fa-folder"></i> All Notes
         </div>
     `;
-    state.folders.sort();
+    state.folders.sort((a, b) => a.localeCompare(b));
     state.folders.forEach(folder => {
         const folderEl = document.createElement('div');
         folderEl.className = `folder-item ${state.currentFolder === folder ? 'active' : ''}`;
@@ -468,15 +481,27 @@ function renderFolders() {
 }
 
 function renderNotes() {
-    const filteredNotes = state.currentFolder === 'All Notes'
+    let notesToDisplay = state.currentFolder === 'All Notes'
         ? state.notes
         : state.notes.filter(n => n.folder === state.currentFolder);
+
+    const searchTerm = searchInput.value.toLowerCase().trim();
+    if (searchTerm) {
+        notesToDisplay = notesToDisplay.filter(note => 
+            note.title.toLowerCase().includes(searchTerm) || 
+            note.content.toLowerCase().includes(searchTerm)
+        );
+    }
+
+    notesToDisplay.sort((a, b) => new Date(b.modified) - new Date(a.modified));
+
     notesList.innerHTML = '';
-    if (filteredNotes.length === 0) {
-        notesList.innerHTML = '<p style="text-align: center; color: var(--text-secondary);">No notes yet</p>';
+    if (notesToDisplay.length === 0) {
+        notesList.innerHTML = '<p style="text-align: center; color: var(--text-secondary);">No notes found</p>';
         return;
     }
-    filteredNotes.forEach(note => {
+
+    notesToDisplay.forEach(note => {
         const noteCard = document.createElement('div');
         noteCard.className = 'note-card';
         noteCard.onclick = () => openNote(note);
@@ -496,6 +521,7 @@ function renderNotes() {
 function selectFolder(folder) {
     state.currentFolder = folder;
     currentFolderName.textContent = folder;
+    searchInput.value = '';
     renderFolders();
     renderNotes();
 }
@@ -514,7 +540,7 @@ async function createNewNote() {
         id: Date.now(),
         title: 'New Note',
         content: '# New Note\n\nStart writing...',
-        folder: state.currentFolder === 'All Notes' ? state.folders[0] : state.currentFolder,
+        folder: state.currentFolder === 'All Notes' ? state.folders[0] || 'Personal' : state.currentFolder,
         created: new Date().toISOString(),
         modified: new Date().toISOString()
     };
@@ -536,11 +562,16 @@ function openNote(note) {
     noteEditor.value = note.content;
     editorPanel.style.display = 'flex';
     setEditorMode('preview');
+    if (window.innerWidth <= 768) {
+        toggleHeaderBtn.style.display = 'flex';
+    }
 }
 
 function closeEditor() {
     editorPanel.style.display = 'none';
     state.currentNote = null;
+    toggleHeaderBtn.style.display = 'none';
+    editorPanel.classList.remove('header-collapsed');
 }
 
 function setEditorMode(mode) {

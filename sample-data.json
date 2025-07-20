@@ -1,0 +1,28 @@
+{
+  "notes": [
+    {
+      "id": 1704067200000,
+      "title": "Chocolate Chip Cookie Recipe",
+      "content": "# Chocolate Chip Cookie Recipe\n\n## Ingredients\n- 2¼ cups all-purpose flour\n- 1 tsp baking soda\n- 1 tsp salt\n- 1 cup butter, softened\n- ¾ cup granulated sugar\n- ¾ cup packed brown sugar\n- 2 large eggs\n- 2 tsp vanilla extract\n- 2 cups chocolate chips\n\n## Instructions\n1. Preheat oven to 375°F\n2. Mix flour, baking soda, and salt\n3. Beat butter and sugars until creamy\n4. Add eggs and vanilla\n5. Gradually add flour mixture\n6. Stir in chocolate chips\n7. Bake 9-11 minutes\n\n**Yield**: 5 dozen cookies",
+      "folder": "Recipes",
+      "created": "2024-01-01T00:00:00.000Z",
+      "modified": "2024-01-01T00:00:00.000Z"
+    },
+    {
+      "id": 1704067200001,
+      "title": "Project Ideas for 2024",
+      "content": "# Project Ideas for 2024\n\n## Web Apps\n- [ ] Personal finance tracker\n- [ ] Habit building app with streaks\n- [ ] Local first note-taking app ✅\n\n## AI Projects\n- [ ] Code review assistant\n- [ ] Smart email categorizer\n- [ ] Meeting transcript summarizer\n\n## Open Source\n- [ ] Contribute to Astro\n- [ ] Create a VS Code extension\n- [ ] Build a CLI tool in Rust\n\n---\n*Remember: Start small, ship fast!*",
+      "folder": "Ideas",
+      "created": "2024-01-01T00:00:00.000Z",
+      "modified": "2024-01-01T00:00:00.000Z"
+    }
+  ],
+  "folders": [
+    "Ideas",
+    "Recipes", 
+    "Work",
+    "Personal",
+    "Archive"
+  ],
+  "lastUpdated": "2024-01-01T00:00:00.000Z"
+}

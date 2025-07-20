@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chrisidian - AI-Powered Notes</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="login-container">
+        <div class="login-box">
+            <h1><i class="fas fa-brain"></i> Chrisidian</h1>
+            <p>AI-Powered Markdown Notes</p>
+            <form id="loginForm">
+                <input type="password" id="password" placeholder="Enter password" required>
+                <input type="text" id="geminiKey" placeholder="Gemini API Key" required>
+                <input type="text" id="githubToken" placeholder="GitHub Personal Access Token" required>
+                <button type="submit">Login</button>
+            </form>
+            <p class="setup-hint">First time? Check README for setup instructions</p>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="mainApp" class="app-container" style="display: none;">
+        <!-- Header -->
+        <header>
+            <h1><i class="fas fa-brain"></i> Chrisidian</h1>
+            <button id="logoutBtn" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+        </header>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <div class="sidebar-header">
+                    <h2>Folders</h2>
+                    <button id="newFolderBtn" class="icon-btn" title="New Folder">
+                        <i class="fas fa-folder-plus"></i>
+                    </button>
+                </div>
+                <div id="folderList" class="folder-list">
+                    <!-- Folders will be dynamically added here -->
+                </div>
+            </aside>
+
+            <!-- Notes Area -->
+            <main class="notes-area">
+                <!-- Input Bar -->
+                <div class="input-bar">
+                    <input type="text" id="commandInput" placeholder='Try: "Save this recipe: Chocolate cake..." or "Save this idea: ..."'>
+                    <button id="processBtn" class="process-btn">
+                        <i class="fas fa-magic"></i> Process
+                    </button>
+                </div>
+
+                <!-- Notes List -->
+                <div class="notes-container">
+                    <div class="notes-header">
+                        <h2 id="currentFolderName">All Notes</h2>
+                        <button id="newNoteBtn" class="icon-btn" title="New Note">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                    <div id="notesList" class="notes-list">
+                        <!-- Notes will be dynamically added here -->
+                    </div>
+                </div>
+            </main>
+
+            <!-- Editor Panel -->
+            <aside class="editor-panel" id="editorPanel" style="display: none;">
+                <div class="editor-header">
+                    <input type="text" id="noteTitle" placeholder="Note Title">
+                    <button id="closeEditorBtn" class="icon-btn">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="editor-toolbar">
+                    <button id="editModeBtn" class="toolbar-btn active">
+                        <i class="fas fa-edit"></i> Edit
+                    </button>
+                    <button id="previewModeBtn" class="toolbar-btn">
+                        <i class="fas fa-eye"></i> Preview
+                    </button>
+                    <button id="saveNoteBtn" class="toolbar-btn primary">
+                        <i class="fas fa-save"></i> Save
+                    </button>
+                    <button id="deleteNoteBtn" class="toolbar-btn danger">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                </div>
+                <textarea id="noteEditor" placeholder="Write your note in Markdown..."></textarea>
+                <div id="notePreview" class="note-preview" style="display: none;"></div>
+            </aside>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+            <div class="spinner"></div>
+            <p>Processing with AI...</p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

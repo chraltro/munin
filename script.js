@@ -258,8 +258,6 @@ async function saveData() {
     }
 }
 
-// --- START: MODIFIED SECTION ---
-// The entire processCommand function has been replaced to handle CREATE, UPDATE, and DELETE.
 async function processCommand() {
     const command = commandInput.value.trim();
     if (!command) return;
@@ -267,157 +265,146 @@ async function processCommand() {
     showLoading(true);
 
     try {
-        // CHANGE 1: The AI now receives a list of existing notes (id and title)
-        // so it can identify which one to update or delete.
-        const context = {
-            folders: state.folders,
-            existingNotes: state.notes.map(n => ({
-                id: n.id,
-                title: n.title
-            }))
-        };
+        const intentPrompt = `Analyze the user's command and identify the primary intent and the title of the target note if applicable.
 
-        if (!state.geminiKey || state.geminiKey.trim() === '') {
-            throw new Error('Gemini API key is missing');
-        }
+User Command: "${command}"
+Note Titles: ${JSON.stringify(state.notes.map(n => n.title))}
 
-        // CHANGE 2: The prompt is completely rewritten. It now instructs the AI
-        // to determine the user's intent (action) and respond with a specific
-        // JSON structure for CREATE, UPDATE, or DELETE.
-        const prompt = `You are a sophisticated AI assistant for a note-taking app. Your task is to process user commands and determine the user's intent.
+Respond in JSON with "intent" ("CREATE", "UPDATE", "DELETE", or "UNKNOWN") and "targetTitle".
+Example for "delete my cookie recipe": {"intent": "DELETE", "targetTitle": "Chocolate Chip Cookie Recipe"}
+Example for "new idea for a cat-based dating app": {"intent": "CREATE", "targetTitle": null}
+Example for "add milk to my grocery list": {"intent": "UPDATE", "targetTitle": "Grocery List"}
+`;
 
-1.  **Analyze the Command**: Understand if the user wants to CREATE a new note, UPDATE an existing one, or DELETE an existing one.
-2.  **Identify the Target Note**: If the command is to UPDATE or DELETE, you MUST identify the correct note from the 'existingNotes' list and use its 'id'. If you cannot determine the note, respond with an error.
-3.  **Generate/Update Content**:
-    *   For CREATE: Generate a title and content as you did before. Assign it to a suitable folder.
-    *   For UPDATE: The user might provide specific content to add, change, or remove. You must intelligently merge these changes into the *existing* content of the note. You can also update the title if requested.
-4.  **Language/Folder Rules**:
-    *   Generated 'title' and 'content' MUST be in the primary language of the user's command.
-    *   Folder names MUST be in English. You can suggest a new folder for new notes.
-5.  **Response Format**: You MUST respond with ONLY a single, valid JSON object. The JSON object's structure depends on the determined action.
-
-**CONTEXT:**
-- **User Command**: "${command}"
-- **Existing Folders**: ${JSON.stringify(context.folders)}
-- **Existing Notes**: ${JSON.stringify(context.existingNotes)}
-
----
-**JSON RESPONSE STRUCTURE:**
-
-**If creating a new note:**
-{
-  "action": "CREATE",
-  "payload": {
-    "title": "A concise title",
-    "content": "The full note content in markdown.",
-    "folder": "The best matching folder name",
-    "isNewFolder": false
-  }
-}
-
-**If updating an existing note:**
-{
-  "action": "UPDATE",
-  "payload": {
-    "id": 123456789,
-    "title": "Updated title (optional)",
-    "content": "The *entire* new content of the note with the user's changes applied."
-  }
-}
-
-**If deleting an existing note:**
-{
-  "action": "DELETE",
-  "payload": {
-    "id": 123456789
-  }
-}
----
-
-Now, process the user command and provide the JSON response.`;
-
-        let response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${state.geminiKey}`, {
+        const intentResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${state.geminiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: {
-                    temperature: 0.5,
-                    topK: 1,
-                    topP: 1,
-                    maxOutputTokens: 65536,
-                }
+                contents: [{ parts: [{ text: intentPrompt }] }],
+                generationConfig: { temperature: 0.1, maxOutputTokens: 200 }
             })
         });
 
-        if (!response.ok && response.status === 404) {
-            console.log('Gemini 2.5 not available, trying 1.5...');
-            response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${state.geminiKey}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }] }],
-                    generationConfig: {
-                        temperature: 0.5,
-                        topK: 1,
-                        topP: 1,
-                        maxOutputTokens: 65536,
-                    }
-                })
-            });
-        }
-        
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => null);
-            console.error('Gemini API error response:', errorData);
+        if (!intentResponse.ok) throw new Error("Could not determine intent from the command.");
 
-            if (response.status === 400 && errorData?.error?.message?.includes('API key not valid')) {
-                throw new Error('Invalid Gemini API key. Please check your API key.');
-            } else if (response.status === 400 && errorData?.error?.message?.includes('model')) {
-                throw new Error('Gemini model error. The model name might have changed.');
-            } else if (response.status === 404) {
-                throw new Error('Gemini model not found.');
+        const intentResult = await intentResponse.json();
+        const intentText = intentResult.candidates[0].content.parts[0].text;
+        const { intent, targetTitle } = JSON.parse(intentText.match(/\{[\s\S]*\}/)[0]);
+
+        console.log(`Intent Detected: ${intent}`, `Target: ${targetTitle || 'N/A'}`);
+
+        switch (intent) {
+            case 'UPDATE': {
+                const noteToUpdate = state.notes.find(n => n.title === targetTitle);
+                if (!noteToUpdate) {
+                    throw new Error(`Could not find a note titled "${targetTitle}" to update.`);
+                }
+
+                showLoading(true, 'Updating note...');
+                const updatePrompt = `You are an AI note editor. Update the following note based on the user's command.
+- Modify the text directly.
+- Respond with ONLY a single JSON object containing the full, updated content. Do not add explanations.
+
+User Command: "${command}"
+
+Original Note Content to Update:
+---
+${noteToUpdate.content}
+---
+
+Response Format:
+{
+  "title": "Potentially updated title",
+  "content": "The full, updated note content in markdown."
+}`;
+
+                const mainResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${state.geminiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: updatePrompt }] }],
+                        generationConfig: { temperature: 0.5, maxOutputTokens: 8192 }
+                    })
+                });
+
+                if (!mainResponse.ok) throw new Error("Failed to get update from AI.");
+                const mainResult = await mainResponse.json();
+                const candidate = mainResult.candidates[0];
+
+                // --- THE CORRECT FIX IS HERE: Check finishReason BEFORE parsing ---
+                if (candidate.finishReason !== "STOP") {
+                    throw new Error(`AI processing stopped unexpectedly. Reason: ${candidate.finishReason}. The response may be too large for the model's limit.`);
+                }
+
+                const mainText = candidate.content.parts[0].text;
+                const payload = JSON.parse(mainText.match(/\{[\s\S]*\}/)[0]);
+
+                const noteIndex = state.notes.findIndex(n => n.id === noteToUpdate.id);
+                state.notes[noteIndex].title = payload.title || noteToUpdate.title;
+                state.notes[noteIndex].content = payload.content;
+                state.notes[noteIndex].modified = new Date().toISOString();
+                openNote(state.notes[noteIndex]);
+                break;
             }
-            throw new Error(`Gemini API error: ${response.status} ${response.statusText}`);
-        }
 
-        const result = await response.json();
-        console.log('Gemini API response:', result);
+            case 'DELETE': {
+                const noteToDelete = state.notes.find(n => n.title === targetTitle);
+                if (!noteToDelete) {
+                    throw new Error(`Could not find a note titled "${targetTitle}" to delete.`);
+                }
+                if (confirm(`Are you sure you want to delete the note: "${noteToDelete.title}"?`)) {
+                    state.notes = state.notes.filter(n => n.id !== noteToDelete.id);
+                    if (state.currentNote && state.currentNote.id === noteToDelete.id) {
+                        closeEditor();
+                    }
+                }
+                break;
+            }
 
-        const candidate = result?.candidates?.[0];
+            case 'CREATE': {
+                showLoading(true, 'Creating note...');
+                const createPrompt = `You are a sophisticated AI assistant for a note-taking app. Your task is to process a user command to create a new note.
 
-        if (!candidate || (candidate.finishReason && candidate.finishReason !== "STOP")) {
-            const reason = candidate?.finishReason || 'UNKNOWN';
-            console.error(`Gemini API call finished with reason: ${reason}`, candidate);
-            let errorMessage = `API call failed with reason: ${reason}.`;
-            if (reason === 'SAFETY') errorMessage += ' The prompt or response was blocked due to safety concerns.';
-            throw new Error(errorMessage);
-        }
-        
-        if (!candidate.content?.parts?.[0]?.text) {
-            console.error('Unexpected Gemini API response structure: Content or text part is missing.', result);
-            throw new Error('Unexpected response from Gemini API. Check console for details.');
-        }
+1.  **Generate Content**: Based on the user command, generate the full note content in well-formatted markdown.
+2.  **Suggest Title**: Create a concise, relevant title for the note.
+3.  **Categorize**: Assign the note to the most appropriate folder from the provided list. You can suggest a new folder if none fit. Folder names MUST be in English.
+4.  **Language**: The 'title' and 'content' MUST be in the primary language of the user's command.
 
-        let aiResponseText = candidate.content.parts[0].text;
-        console.log('AI response text:', aiResponseText);
+User Command: "${command}"
+Existing Folders: ${JSON.stringify(state.folders)}
 
-        const jsonMatch = aiResponseText.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-            aiResponseText = jsonMatch[0];
-        }
+Response Format: You MUST respond with ONLY a single, valid JSON object.
+{
+    "title": "A concise title in the same language as the command",
+    "content": "The full note content in well-formatted markdown...",
+    "folder": "The single best matching folder name (in English)",
+    "isNewFolder": false
+}`;
 
-        const aiResponse = JSON.parse(aiResponseText);
-        console.log('Parsed AI response:', aiResponse);
-        const { action, payload } = aiResponse;
+                const mainResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${state.geminiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: createPrompt }] }],
+                        generationConfig: { temperature: 0.7, maxOutputTokens: 8192 }
+                    })
+                });
 
-        // CHANGE 3: A switch statement now handles the response from the AI.
-        // It performs a different action on the 'state' based on the "action"
-        // property in the JSON response.
-        switch (action) {
-            case 'CREATE':
+                if (!mainResponse.ok) throw new Error("Failed to get new note from AI.");
+                const mainResult = await mainResponse.json();
+                const candidate = mainResult.candidates[0];
+
+                // --- THE CORRECT FIX IS HERE: Check finishReason BEFORE parsing ---
+                if (candidate.finishReason !== "STOP") {
+                    throw new Error(`AI processing stopped unexpectedly. Reason: ${candidate.finishReason}. The response may be too large for the model's limit.`);
+                }
+
+                const mainText = candidate.content.parts[0].text;
+                const payload = JSON.parse(mainText.match(/\{[\s\S]*\}/)[0]);
+
                 if (payload.isNewFolder && !state.folders.includes(payload.folder)) {
                     state.folders.push(payload.folder);
+                    renderFolders();
                 }
                 const newNote = {
                     id: Date.now(),
@@ -428,63 +415,26 @@ Now, process the user command and provide the JSON response.`;
                     modified: new Date().toISOString()
                 };
                 state.notes.push(newNote);
-                await saveData();
-                renderFolders();
-                renderNotes();
                 openNote(newNote);
                 break;
-
-            case 'UPDATE':
-                const noteIndex = state.notes.findIndex(n => n.id === payload.id);
-                if (noteIndex !== -1) {
-                    if (payload.title) state.notes[noteIndex].title = payload.title;
-                    if (payload.content) state.notes[noteIndex].content = payload.content;
-                    state.notes[noteIndex].modified = new Date().toISOString();
-                    
-                    await saveData();
-                    renderNotes();
-
-                    if (state.currentNote && state.currentNote.id === payload.id) {
-                        openNote(state.notes[noteIndex]);
-                    } else {
-                        openNote(state.notes[noteIndex]);
-                    }
-                } else {
-                    throw new Error(`AI tried to update a note with ID ${payload.id}, but it was not found.`);
-                }
-                break;
-
-            case 'DELETE':
-                const noteToDelete = state.notes.find(n => n.id === payload.id);
-                if (noteToDelete) {
-                    if (confirm(`Are you sure you want to delete the note: "${noteToDelete.title}"?`)) {
-                        state.notes = state.notes.filter(n => n.id !== payload.id);
-                        await saveData();
-                        renderNotes();
-                        if (state.currentNote && state.currentNote.id === payload.id) {
-                            closeEditor();
-                        }
-                    }
-                } else {
-                    throw new Error(`AI tried to delete a note with ID ${payload.id}, but it was not found.`);
-                }
-                break;
+            }
 
             default:
-                throw new Error(`AI returned an unknown action: "${action}"`);
+                alert("I'm not sure what you mean. Please try rephrasing your command, for example: 'create a new note about...', 'update my note titled...', or 'delete the note about...'.");
+                break;
         }
 
+        await saveData();
+        renderNotes();
         commandInput.value = '';
 
     } catch (error) {
         console.error('Error processing command:', error);
-        console.error('Full error details:', error.stack);
         alert(`Error: ${error.message}\n\nCheck the console (F12) for more details.`);
     } finally {
         showLoading(false);
     }
 }
-// --- END: MODIFIED SECTION ---
 
 function renderFolders() {
     folderList.innerHTML = `

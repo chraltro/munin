@@ -422,13 +422,15 @@ function toFraction(decimal) {
         }
     }
     
-    return parseFloat(decimal.toFixed(2)).toString();
+    return parseFloat(decimal.toFixed(2)).toString().replace('.', ',');
 }
 
 function parseQuantity(quantityStr) {
     quantityStr = quantityStr.trim();
-    if (quantityStr.includes(' ')) {
-        const parts = quantityStr.split(' ');
+    const normalizedQuantityStr = quantityStr.replace(',', '.');
+
+    if (normalizedQuantityStr.includes(' ')) {
+        const parts = normalizedQuantityStr.split(' ');
         if (parts.length === 2 && parts[1].includes('/')) {
             const whole = parseInt(parts[0], 10);
             const fracParts = parts[1].split('/');
@@ -438,8 +440,8 @@ function parseQuantity(quantityStr) {
                 return whole + num / den;
             }
         }
-    } else if (quantityStr.includes('/')) {
-        const parts = quantityStr.split('/');
+    } else if (normalizedQuantityStr.includes('/')) {
+        const parts = normalizedQuantityStr.split('/');
         if (parts.length === 2) {
             const num = parseInt(parts[0], 10);
             const den = parseInt(parts[1], 10);
@@ -448,7 +450,7 @@ function parseQuantity(quantityStr) {
             }
         }
     }
-    const parsed = parseFloat(quantityStr);
+    const parsed = parseFloat(normalizedQuantityStr);
     return isNaN(parsed) ? null : parsed;
 }
 
@@ -467,7 +469,7 @@ function scaleRecipeContent(content, baseServings, newServings) {
         const prefix = lineMatch[1];
         let restOfLine = lineMatch[2];
         
-        const quantityMatch = restOfLine.match(/^(\d+\s+\d+\/\d+|\d+\/\d+|\d*\.?\d+)/);
+        const quantityMatch = restOfLine.match(/^(\d+\s+\d+\/\d+|\d+\/\d+|\d*[,.]?\d+)/);
         
         if (quantityMatch) {
             const quantityStr = quantityMatch[0];

@@ -114,9 +114,14 @@
                             <input type="search" id="searchInput" class="search-input" placeholder="Search notes...">
                             <i class="fas fa-search search-icon"></i>
                         </div>
-                        <button id="newNoteBtn" class="icon-btn primary" title="New Note">
-                            <i class="fas fa-plus"></i>
-                        </button>
+                        <div class="header-button-group">
+                            <button id="newFromTemplateBtn" class="icon-btn" title="New from Template">
+                                <i class="fas fa-paste"></i>
+                            </button>
+                            <button id="newNoteBtn" class="icon-btn primary" title="New Note">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
                     </div>
                     <div id="notesList" class="notes-list"></div>
                 </div>
@@ -192,6 +197,20 @@
                     </button>
                 </div>
                 <div id="aiResponseOutput" class="note-preview modal-body"></div>
+            </div>
+        </div>
+
+        <div id="templateModal" class="modal-overlay" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>New from Template</h3>
+                    <button id="closeTemplateModalBtn" class="modal-close-btn">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div id="templateList" class="modal-body template-list-modal">
+                    <!-- Templates populated by JS -->
+                </div>
             </div>
         </div>
 

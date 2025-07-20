@@ -10,7 +10,8 @@ function debounce(func, delay) {
 const APP_CONFIG = {
     passwordHash: '7f72131af35c82819bb44f256e34419f381fdeb465b1727d153b58030fabbcb7',
     gistFilename: 'chrisidian-notes.json',
-    embeddingModel: 'text-embedding-004'
+    embeddingModel: 'text-embedding-004',
+    templateFolder: 'Templates'
 };
 
 let state = {
@@ -97,6 +98,7 @@ const elements = {
     currentFolderName: document.getElementById('currentFolderName'),
     newFolderBtn: document.getElementById('newFolderBtn'),
     newNoteBtn: document.getElementById('newNoteBtn'),
+    newFromTemplateBtn: document.getElementById('newFromTemplateBtn'),
     editorPanel: document.getElementById('editorPanel'),
     noteTitle: document.getElementById('noteTitle'),
     noteTagsContainer: document.getElementById('tags-input-area'),
@@ -115,6 +117,9 @@ const elements = {
     aiResponseModal: document.getElementById('aiResponseModal'),
     aiResponseOutput: document.getElementById('aiResponseOutput'),
     closeAiResponseBtn: document.getElementById('closeAiResponseBtn'),
+    templateModal: document.getElementById('templateModal'),
+    closeTemplateModalBtn: document.getElementById('closeTemplateModalBtn'),
+    templateList: document.getElementById('templateList'),
     changeThemeBtn: document.getElementById('changeThemeBtn'),
     themeModal: document.getElementById('themeModal'),
     themeModalGrid: document.getElementById('themeModalGrid'),
@@ -208,7 +213,8 @@ function setupEventListeners() {
     elements.commandInput.addEventListener('keydown', handleCommandKeyPress);
     elements.commandInput.addEventListener('input', autoResizeCommandInput);
     elements.newFolderBtn.addEventListener('click', createNewFolder);
-    elements.newNoteBtn.addEventListener('click', createNewNote);
+    elements.newNoteBtn.addEventListener('click', () => createNewNote());
+    elements.newFromTemplateBtn.addEventListener('click', openTemplateModal);
     elements.editModeBtn.addEventListener('click', () => setEditorMode('edit'));
     elements.previewModeBtn.addEventListener('click', () => setEditorMode('preview'));
     elements.historyBtn.addEventListener('click', showHistory);
@@ -255,6 +261,16 @@ function setupModalEventListeners() {
         if (e.target === elements.themeModal) {
             elements.themeModal.style.display = 'none';
         }
+    });
+
+    elements.templateModal.addEventListener('click', (e) => {
+        if (e.target === elements.templateModal) {
+            elements.templateModal.style.display = 'none';
+        }
+    });
+    
+    elements.closeTemplateModalBtn.addEventListener('click', () => {
+        elements.templateModal.style.display = 'none';
     });
 }
 
@@ -590,6 +606,7 @@ async function loadData() {
         renderFolders();
         renderTags();
         renderNotes();
+        await ensureTemplatesExist();
         updateSaveStatus('Loaded');
     } catch (error) {
         console.error('Error loading data:', error);
@@ -802,16 +819,32 @@ TOOL-USE INSTRUCTIONS:
 2. tool: "CREATE_NOTE"
    - Use this for commands that clearly ask to save new information.
    - **CRITICAL**: The 'content' you generate MUST be well-formatted markdown. Use headings, lists, bold text, and newlines (\`\\n\`) to make the note clear and readable.
-   - **If the note is a RECIPE, you MUST follow these rules**:
-     1. Set 'folder' to "Recipes".
-     2. Add a 'servings' argument (e.g., \'"servings": 4\').
-     3. For every ingredient in the markdown 'content', the line MUST be a list item starting with a numeric quantity (e.g., \`- 250g flour\`, \`* 2 eggs\`). This is required for scaling.
+   - **If the note is a RECIPE, you MUST use this template**:
+     \`\`\`markdown
+     # {{Recipe Title}}
+
+     > A short description of the recipe.
+
+     **Servings:** {{Number}}
+     **Prep time:** {{Time}}
+     **Cook time:** {{Time}}
+
+     ## Ingredients
+     - 1 cup Flour
+     - 2 large Eggs
+
+     ## Instructions
+     1. First step...
+     2. Second step...
+     \`\`\`
+   - When creating a recipe, you MUST set the 'folder' to "Recipes" and add a 'servings' argument to the JSON (e.g., \`"servings": 4\`). The ingredient lines in the markdown 'content' MUST start with a list marker and a quantity.
    - **args for a regular note**: { "title": "...", "content": "...", "folder": "...", "tags": ["relevant", "keywords"], "newFolder": true/false }
    - **args for a RECIPE**: { "title": "...", "content": "...", "folder": "Recipes", "tags": ["recipe", "dessert"], "servings": 4, "newFolder": false }
 
 3. tool: "UPDATE_NOTE"
    - Use this to modify an existing note based on the 'Relevant Existing Notes'.
    - **CRITICAL**: The 'newContent' you generate MUST be the complete, well-formatted markdown for the entire note.
+   - If you are updating a **RECIPE**, ensure the updated content still follows the recipe template structure and that all ingredient lines start with a quantity for scaling.
    - args: { "targetTitle": "Full Title of Note to Update", "newTitle": "Updated Title", "newContent": "Full new content...", "newTags": ["updated", "tags"] }
 
 4. tool: "DELETE_NOTE"
@@ -1058,6 +1091,11 @@ function renderNotes(notesToShow = null, animate = true) {
             notesToDisplay_intermediate = notesToDisplay_intermediate.filter(n => n.folder === state.currentFolder);
         }
 
+        // Exclude templates from normal view unless we're in the Templates folder
+        if (state.currentFolder !== APP_CONFIG.templateFolder) {
+            notesToDisplay_intermediate = notesToDisplay_intermediate.filter(n => n.folder !== APP_CONFIG.templateFolder);
+        }
+
         // Then filter by tags
         if (state.activeTags.length > 0) {
             notesToDisplay_intermediate = notesToDisplay_intermediate.filter(n =>
@@ -1288,7 +1326,12 @@ async function createNewFolder() {
 }
 
 async function renameFolder(oldName) {
-    if (oldName === 'All Notes') return;
+    if (oldName === 'All Notes' || oldName === APP_CONFIG.templateFolder) {
+        if (oldName === APP_CONFIG.templateFolder) {
+            showNotification(`The "${APP_CONFIG.templateFolder}" folder cannot be renamed.`, 'error');
+        }
+        return;
+    }
 
     const newNamePrompt = prompt('Enter new folder name:', oldName);
     if (!newNamePrompt || newNamePrompt.trim() === '') return;
@@ -1325,6 +1368,11 @@ async function renameFolder(oldName) {
 }
 
 async function deleteFolder(folderName) {
+    if (folderName === APP_CONFIG.templateFolder) {
+        showNotification(`The "${APP_CONFIG.templateFolder}" folder cannot be deleted.`, 'error');
+        return;
+    }
+    
     if (!confirm(`Are you sure you want to delete the folder "${folderName}"? This cannot be undone.`)) {
         return;
     }
@@ -1347,16 +1395,18 @@ async function deleteFolder(folderName) {
     updateSaveStatus('Saved');
 }
 
-async function createNewNote() {
-    const newContent = '# New Note\n\nStart writing...';
-    const newEmbedding = await callEmbeddingAPI(newContent);
+async function createNewNote(content = null, title = null, tags = []) {
+    const newContent = content || '# New Note\n\nStart writing...';
+    const newTitle = title || 'New Note';
+    
+    const newEmbedding = await callEmbeddingAPI(`${newTitle}\n${newContent}`);
 
     const newNote = {
         id: Date.now(),
-        title: 'New Note',
+        title: newTitle,
         content: newContent,
-        folder: state.currentFolder === 'All Notes' ? state.folders[0] || 'Prompts' : state.currentFolder,
-        tags: [],
+        folder: state.currentFolder === 'All Notes' || state.currentFolder === APP_CONFIG.templateFolder ? 'Prompts' : state.currentFolder,
+        tags: tags,
         created: new Date().toISOString(),
         modified: new Date().toISOString(),
         embedding: newEmbedding
@@ -1366,6 +1416,10 @@ async function createNewNote() {
     
     try {
         await saveData();
+        if (newNote.tags.length > 0) {
+            updateAllTags();
+            renderTags();
+        }
         renderNotes();
         openNote(newNote);
         updateSaveStatus('Saved');
@@ -1373,6 +1427,99 @@ async function createNewNote() {
         state.notes = state.notes.filter(n => n.id !== newNote.id);
         console.error('Failed to create note:', error);
         showNotification(`Failed to create note: ${error.message}`, 'error');
+    }
+}
+
+function openTemplateModal() {
+    const templates = state.notes.filter(n => n.folder === APP_CONFIG.templateFolder);
+    elements.templateList.innerHTML = '';
+
+    // Add Blank Note option
+    const blankCard = document.createElement('div');
+    blankCard.className = 'template-card';
+    blankCard.innerHTML = `<i class="fas fa-file"></i><h4>Blank Note</h4>`;
+    blankCard.onclick = () => {
+        createNewNote();
+        elements.templateModal.style.display = 'none';
+    };
+    elements.templateList.appendChild(blankCard);
+
+    // Add templates
+    templates.forEach(template => {
+        const templateCard = document.createElement('div');
+        templateCard.className = 'template-card';
+        // Use a generic icon for templates for now, can be improved later
+        templateCard.innerHTML = `<i class="fas fa-paste"></i><h4>${template.title}</h4>`;
+        templateCard.onclick = () => {
+            let newTitle = template.title.replace('Template', '').trim();
+            if (newTitle === 'Meeting Minutes') {
+                newTitle += ` - ${new Date().toLocaleDateString()}`;
+            }
+            createNewNote(template.content, newTitle, template.tags);
+            elements.templateModal.style.display = 'none';
+        };
+        elements.templateList.appendChild(templateCard);
+    });
+    
+    elements.templateModal.style.display = 'flex';
+}
+
+async function ensureTemplatesExist() {
+    const templateFolder = APP_CONFIG.templateFolder;
+    let madeChanges = false;
+    
+    if (!state.folders.includes(templateFolder)) {
+        state.folders.push(templateFolder);
+        madeChanges = true;
+    }
+
+    const templates = [
+        {
+            title: 'Meeting Minutes Template',
+            tags: ['work', 'meeting'],
+            content: `# Meeting: {{Meeting Title}}\n\n**Date:** ${new Date().toISOString().split('T')[0]}\n**Time:** \n**Location:** \n\n## Attendees\n- \n\n## Agenda\n1. \n\n## Discussion\n\n\n## Action Items\n- [ ] Task for @name due by YYYY-MM-DD\n\n## Decisions Made\n\n`
+        },
+        {
+            title: 'Daily Journal Template',
+            tags: ['personal', 'journal'],
+            content: `# Daily Journal - ${new Date().toISOString().split('T')[0]}\n\n## How I'm Feeling Today\n- Rate your day (1-5): \n- Mood: \n\n## Three Things I'm Grateful For\n1. \n2. \n3. \n\n## Today's Highlights\n\n\n## Challenges & Learnings\n\n\n## Goals for Tomorrow\n- [ ] `
+        },
+        {
+            title: 'Bug Report Template',
+            tags: ['work', 'bug'],
+            content: `# Bug Report: {{Brief description of bug}}\n\n**Severity:** High/Medium/Low\n**Status:** Open\n\n## Description\nA clear and concise description of what the bug is.\n\n## Steps to Reproduce\n1. Go to '...'\n2. Click on '....'\n3. Scroll down to '....'\n4. See error\n\n## Expected Behavior\nA clear and concise description of what you expected to happen.\n\n## Actual Behavior\nA clear and concise description of what actually happened.\n\n## Environment\n- **OS:** \n- **Browser:** \n- **Version:** `
+        },
+        {
+            title: 'Recipe Template',
+            tags: ['recipe'],
+            content: `# {{Recipe Title}}\n\n> A short description of the recipe.\n\n**Servings:** 4\n**Prep time:** \n**Cook time:** \n\n## Ingredients\n- 1 cup Flour\n- 2 large Eggs\n\n## Instructions\n1. First step...\n2. Second step...\n`
+        }
+    ];
+
+    for (const template of templates) {
+        const templateExists = state.notes.some(n => n.folder === templateFolder && n.title === template.title);
+        if (!templateExists) {
+            const newTemplateNote = {
+                id: Date.now() + Math.random(), // Add random to avoid collision in loop
+                title: template.title,
+                content: template.content,
+                folder: templateFolder,
+                tags: template.tags,
+                created: new Date().toISOString(),
+                modified: new Date().toISOString(),
+                embedding: await callEmbeddingAPI(`${template.title}\n${template.content}`)
+            };
+            state.notes.push(newTemplateNote);
+            madeChanges = true;
+        }
+    }
+    
+    if (madeChanges) {
+        updateAllTags();
+        renderFolders();
+        renderTags();
+        await saveData();
+        console.log("Default templates ensured.");
     }
 }
 

@@ -1602,6 +1602,7 @@ function setEditorMode(mode) {
         }
         elements.notePreview.innerHTML = renderSanitizedHTML(contentToRender);
     }
+    handleEditorSelectionChange();
 }
 
 function setDirtyState(isDirty) {
@@ -2139,8 +2140,13 @@ function handleEditorSelectionChange() {
     // Use a small timeout to allow the browser to finalize the selection action
     setTimeout(() => {
         if (state.currentNote) {
-            const selection = elements.noteEditor.value.substring(elements.noteEditor.selectionStart, elements.noteEditor.selectionEnd);
-            elements.aiActionsBtn.disabled = selection.trim().length < 10;
+            const isPreview = elements.previewModeBtn.classList.contains('active');
+            if (isPreview) {
+                elements.aiActionsBtn.disabled = false;
+            } else {
+                const selection = elements.noteEditor.value.substring(elements.noteEditor.selectionStart, elements.noteEditor.selectionEnd);
+                elements.aiActionsBtn.disabled = selection.trim().length < 10;
+            }
         } else {
             elements.aiActionsBtn.disabled = true;
         }
@@ -2182,7 +2188,13 @@ function replaceSelectedText(replacement) {
 
 async function performContextualAIAction(action, tone) {
     const editor = elements.noteEditor;
-    const selectedText = editor.value.substring(editor.selectionStart, editor.selectionEnd).trim();
+    let selectedText = editor.value.substring(editor.selectionStart, editor.selectionEnd).trim();
+    const isPreview = elements.previewModeBtn.classList.contains('active');
+
+    if (!selectedText && isPreview) {
+        selectedText = editor.value.trim();
+    }
+
     if (!selectedText) return;
 
     let prompt = '';

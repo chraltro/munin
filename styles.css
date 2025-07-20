@@ -642,14 +642,22 @@ body {
 .view-switcher {
     display: flex;
     align-items: center;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
 }
 
 .view-switcher .icon-btn {
+    border: 1px solid var(--border);
     border-radius: 0;
-    border: none;
+}
+
+.view-switcher .icon-btn:first-child {
+    border-top-left-radius: var(--radius);
+    border-bottom-left-radius: var(--radius);
+}
+
+.view-switcher .icon-btn:last-child {
+    border-left: none;
+    border-top-right-radius: var(--radius);
+    border-bottom-right-radius: var(--radius);
 }
 
 .view-switcher .icon-btn.active {
@@ -736,6 +744,29 @@ body {
     font-size: 0.875rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+}
+
+.note-list-header > div.sortable {
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.note-list-header > div.sortable:hover {
+    color: var(--primary);
+}
+
+.note-list-header .fas {
+    margin-left: 0.5rem;
+    color: var(--text-tertiary);
+}
+
+.note-list-header > div.sortable:hover .fas {
+    color: var(--primary);
+}
+
+.note-list-header .fa-sort-up,
+.note-list-header .fa-sort-down {
+    color: var(--primary) !important;
 }
 
 .note-list-item {

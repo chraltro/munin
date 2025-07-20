@@ -25,6 +25,10 @@ let state = {
     originalNoteContent: '',
     isSemanticSearching: false,
     noteViewMode: 'card',
+    sort: {
+        by: 'modified',
+        order: 'desc'
+    },
     saveTimeout: null,
     currentServings: null,
     baseServings: null,
@@ -396,6 +400,16 @@ function setViewMode(mode) {
     state.noteViewMode = mode;
     saveViewMode();
     updateViewModeUI();
+    renderNotes(null, false);
+}
+
+function handleSort(sortBy) {
+    if (state.sort.by === sortBy) {
+        state.sort.order = state.sort.order === 'asc' ? 'desc' : 'asc';
+    } else {
+        state.sort.by = sortBy;
+        state.sort.order = sortBy === 'title' ? 'asc' : 'desc'; // Sensible defaults
+    }
     renderNotes(null, false);
 }
 
@@ -1162,7 +1176,23 @@ function renderNotes(notesToShow = null, animate = true) {
                 note.content.toLowerCase().includes(searchTerm)
             );
         }
-        notesToDisplay.sort((a, b) => new Date(b.modified) - new Date(a.modified));
+
+        const { by, order } = state.sort;
+        const direction = order === 'asc' ? 1 : -1;
+        notesToDisplay.sort((a, b) => {
+            let valA, valB;
+            if (by === 'title') {
+                valA = a.title.toLowerCase();
+                valB = b.title.toLowerCase();
+            } else { // 'modified'
+                valA = new Date(a.modified);
+                valB = new Date(b.modified);
+            }
+
+            if (valA < valB) return -1 * direction;
+            if (valA > valB) return 1 * direction;
+            return 0;
+        });
     }
 
     elements.notesList.innerHTML = '';
@@ -1223,13 +1253,29 @@ function renderNotes(notesToShow = null, animate = true) {
     } else { // List view
         const header = document.createElement('div');
         header.className = 'note-list-header';
+
+        const getSortIcon = (key) => {
+            if (state.sort.by === key) {
+                const icon = state.sort.order === 'asc' ? 'fa-sort-up' : 'fa-sort-down';
+                return `<i class="fas ${icon}"></i>`;
+            }
+            return `<i class="fas fa-sort"></i>`;
+        };
+
         header.innerHTML = `
-            <div class="note-list-header-title">Title</div>
+            <div class="note-list-header-title sortable" data-sort-by="title">Title ${getSortIcon('title')}</div>
             <div class="note-list-header-tags">Tags</div>
             <div class="note-list-header-folder">Folder</div>
-            <div class="note-list-header-modified">Modified</div>
+            <div class="note-list-header-modified sortable" data-sort-by="modified">Modified ${getSortIcon('modified')}</div>
         `;
         elements.notesList.appendChild(header);
+
+        header.querySelectorAll('.sortable').forEach(h => {
+            h.addEventListener('click', (e) => {
+                const sortBy = e.currentTarget.dataset.sortBy;
+                if (sortBy) handleSort(sortBy);
+            });
+        });
 
         notesToDisplay.forEach((note, index) => {
             const noteListItem = document.createElement('div');

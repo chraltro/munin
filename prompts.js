@@ -115,6 +115,10 @@ ${selectedText}
 ---
 
 Now, provide the JSON array of suggested tags.`;
+        case 'custom':
+            return `You are a text editing assistant. Follow the user's instructions to modify the provided text. Return only the modified text, without any explanation or preamble.\n\nUSER'S INSTRUCTION:\n${tone}\n\n---
+TEXT TO MODIFY:
+${selectedText}`;
         default:
             return '';
     }

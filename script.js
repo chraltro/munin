@@ -2123,6 +2123,8 @@ function populateAiActionsMenu() {
         <div class="menu-separator"></div>
         <button data-action="cleanup" title="Apply best practice formatting or match template">Clean Up</button>
         <button data-action="add_tags" title="Suggest and add relevant tags to this note">Add Tags</button>
+        <div class="menu-separator"></div>
+        <button data-action="custom" title="Give custom instructions to the AI">Custom...</button>
     `;
 
     // Add positioning logic for nested dropdowns
@@ -2173,8 +2175,16 @@ function handleAiActionClick(e) {
     const tone = button.dataset.tone;
 
     if (action) {
-        performContextualAIAction(action, tone);
         elements.aiActionsContainer.classList.remove('is-open');
+
+        if (action === 'custom') {
+            const customInstruction = prompt('Enter your custom instructions for the AI:');
+            if (customInstruction && customInstruction.trim()) {
+                performContextualAIAction(action, customInstruction.trim());
+            }
+        } else {
+            performContextualAIAction(action, tone);
+        }
     }
 }
 

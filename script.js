@@ -109,7 +109,6 @@ function showMainApp() {
             console.log('✅ Gemini API is working');
         } else {
             console.error('❌ Gemini API test failed');
-            alert('Warning: Gemini API might not be working correctly. Check your API key and console for details.');
         }
     });
 }
@@ -130,27 +129,17 @@ function setupEventListeners() {
 
 async function testGeminiAPI() {
     try {
-        let response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${state.geminiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: 'Say "Hello World" in JSON format: {"message": "Hello World"}' }] }]
-            })
-        });
-        if (!response.ok && response.status === 404) {
-            response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${state.geminiKey}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: 'Say "Hello World" in JSON format: {"message": "Hello World"}' }] }]
-                })
-            });
-        }
-        const result = await response.json();
+        const testPrompt = 'Say "Hello World" in JSON format: {"message": "Hello World"}';
+        const result = await callGeminiAPI(testPrompt, { maxOutputTokens: 50 });
+
         console.log('Gemini API test response:', result);
-        return result;
+        if (result && result.candidates) {
+            return result;
+        }
+        return null;
     } catch (error) {
         console.error('Gemini API test failed:', error);
+        alert(`Warning: Gemini API test failed. ${error.message}`);
         return null;
     }
 }
@@ -258,6 +247,41 @@ async function saveData() {
     }
 }
 
+async function callGeminiAPI(prompt, generationConfig) {
+    const modelsToTry = ['gemini-2.5-flash', 'gemini-1.5-flash'];
+    let lastError = null;
+
+    for (const model of modelsToTry) {
+        try {
+            console.log(`Attempting to use model: ${model}`);
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${state.geminiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: generationConfig
+                })
+            });
+
+            if (response.ok) {
+                console.log(`✅ Successfully used model: ${model}`);
+                return await response.json();
+            }
+
+            const errorData = await response.json().catch(() => ({ error: { message: `HTTP ${response.status}: ${response.statusText}` } }));
+            const errorMessage = errorData.error?.message || 'Unknown API error.';
+            console.error(`❌ Model ${model} failed: ${errorMessage}`);
+            lastError = `[${model}]: ${errorMessage}`;
+
+        } catch (networkError) {
+            console.error(`❌ Network error while trying model ${model}:`, networkError);
+            lastError = `[${model}]: Network error - ${networkError.message}`;
+        }
+    }
+
+    throw new Error(`All API models failed. Last error: ${lastError}`);
+}
+
 async function processCommand() {
     const command = commandInput.value.trim();
     if (!command) return;
@@ -275,38 +299,17 @@ Example for "delete my cookie recipe": {"intent": "DELETE", "targetTitle": "Choc
 Example for "new idea for a cat-based dating app": {"intent": "CREATE", "targetTitle": null}
 Example for "add milk to my grocery list": {"intent": "UPDATE", "targetTitle": "Grocery List"}
 `;
-
-        const intentResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${state.geminiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: intentPrompt }] }],
-                generationConfig: { temperature: 0.1, maxOutputTokens: 2048 }
-            })
-        });
-
-        if (!intentResponse.ok) throw new Error("Could not determine intent from the command.");
-
-        const intentResult = await intentResponse.json();
+        const intentResult = await callGeminiAPI(intentPrompt, { temperature: 0.1, maxOutputTokens: 200 });
         
         if (!intentResult.candidates || intentResult.candidates.length === 0) {
-            console.error('Gemini intent response:', intentResult);
-            throw new Error("AI response for intent detection is empty or invalid. Check console for details.");
+            throw new Error("AI response for intent detection is empty or invalid.");
         }
         
-        const intentCandidate = intentResult.candidates[0];
-        if (intentCandidate.finishReason && intentCandidate.finishReason !== "STOP") {
-            throw new Error(`AI processing for intent stopped unexpectedly. Reason: ${intentCandidate.finishReason}.`);
-        }
-        
-        const intentText = intentCandidate.content.parts[0].text;
+        const intentText = intentResult.candidates[0].content.parts[0].text;
         const intentJsonMatch = intentText.match(/\{[\s\S]*\}/);
-        
         if (!intentJsonMatch) {
-            console.error("Could not extract JSON from AI intent response:", intentText);
             throw new Error("AI did not respond with valid JSON for intent detection.");
         }
-        
         const { intent, targetTitle } = JSON.parse(intentJsonMatch[0]);
 
         console.log(`Intent Detected: ${intent}`, `Target: ${targetTitle || 'N/A'}`);
@@ -337,33 +340,19 @@ Response Format:
   "content": "The full, updated note content in markdown."
 }`;
 
-                const mainResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${state.geminiKey}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: updatePrompt }] }],
-                        generationConfig: { temperature: 0.5, maxOutputTokens: 65536 }
-                    })
-                });
-
-                if (!mainResponse.ok) throw new Error("Failed to get update from AI.");
-                const mainResult = await mainResponse.json();
+                const mainResult = await callGeminiAPI(updatePrompt, { temperature: 0.5, maxOutputTokens: 8192 });
 
                 if (!mainResult.candidates || mainResult.candidates.length === 0) {
-                    console.error('Gemini update response:', mainResult);
-                    throw new Error("AI response for update is empty or invalid. Check console for details.");
+                    throw new Error("AI response for note update is empty or invalid.");
                 }
                 const candidate = mainResult.candidates[0];
-
                 if (candidate.finishReason && candidate.finishReason !== "STOP") {
-                    throw new Error(`AI processing stopped unexpectedly. Reason: ${candidate.finishReason}. The response may be too large for the model's limit.`);
+                    throw new Error(`AI processing stopped unexpectedly. Reason: ${candidate.finishReason}.`);
                 }
 
                 const mainText = candidate.content.parts[0].text;
                 const payloadMatch = mainText.match(/\{[\s\S]*\}/);
-
                 if (!payloadMatch) {
-                    console.error("Could not extract JSON from AI update response:", mainText);
                     throw new Error("AI did not respond with valid JSON for the note update.");
                 }
                 const payload = JSON.parse(payloadMatch[0]);
@@ -409,39 +398,23 @@ Response Format: You MUST respond with ONLY a single, valid JSON object.
     "folder": "The single best matching folder name (in English)",
     "isNewFolder": false
 }`;
-
-                const mainResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${state.geminiKey}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: createPrompt }] }],
-                        generationConfig: { temperature: 0.7, maxOutputTokens: 65536 }
-                    })
-                });
-
-                if (!mainResponse.ok) throw new Error("Failed to get new note from AI.");
-                const mainResult = await mainResponse.json();
                 
-                // --- START: Robust Parsing for Create ---
+                const mainResult = await callGeminiAPI(createPrompt, { temperature: 0.7, maxOutputTokens: 8192 });
+
                 if (!mainResult.candidates || mainResult.candidates.length === 0) {
-                    console.error('Gemini create response:', mainResult);
-                    throw new Error("AI response for creation is empty or invalid. Check console for details.");
+                    throw new Error("AI response for note creation is empty or invalid.");
                 }
                 const candidate = mainResult.candidates[0];
-
                 if (candidate.finishReason && candidate.finishReason !== "STOP") {
-                    throw new Error(`AI processing stopped unexpectedly. Reason: ${candidate.finishReason}. The response may be too large for the model's limit.`);
+                    throw new Error(`AI processing stopped unexpectedly. Reason: ${candidate.finishReason}.`);
                 }
-
+                
                 const mainText = candidate.content.parts[0].text;
                 const payloadMatch = mainText.match(/\{[\s\S]*\}/);
-
                 if (!payloadMatch) {
-                    console.error("Could not extract JSON from AI create response:", mainText);
                     throw new Error("AI did not respond with valid JSON for the new note.");
                 }
                 const payload = JSON.parse(payloadMatch[0]);
-                // --- END: Robust Parsing for Create ---
 
                 if (payload.isNewFolder && !state.folders.includes(payload.folder)) {
                     state.folders.push(payload.folder);

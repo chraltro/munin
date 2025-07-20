@@ -843,6 +843,9 @@ async function executeAITool(tool, args) {
             if (args.newTags && Array.isArray(args.newTags)) {
                 state.notes[noteIndex].tags = args.newTags;
             }
+            if (state.notes[noteIndex].folder === 'Recipes' && args.servings) {
+                 state.notes[noteIndex].servings = args.servings;
+            }
             state.notes[noteIndex].modified = new Date().toISOString();
             state.notes[noteIndex].embedding = await callEmbeddingAPI(`${state.notes[noteIndex].title}\n${state.notes[noteIndex].content}`);
 
@@ -1407,54 +1410,29 @@ async function ensureTemplatesExist() {
         madeChanges = true;
     }
 
-    const templates = getTemplates();
-    const templateTitlesFromCode = new Set(templates.map(t => t.title));
-
-    // Update or create templates
-    for (const template of templates) {
-        const existingTemplateIndex = state.notes.findIndex(n => n.folder === templateFolder && n.title === template.title);
-        
-        if (existingTemplateIndex !== -1) {
-            const existingTemplate = state.notes[existingTemplateIndex];
-            const contentNeedsUpdate = existingTemplate.content !== template.content;
-            const servingsNeedsUpdate = existingTemplate.servings !== template.servings;
-            const tagsNeedUpdate = JSON.stringify(existingTemplate.tags?.slice().sort()) !== JSON.stringify(template.tags?.slice().sort());
-            
-            if (contentNeedsUpdate || servingsNeedsUpdate || tagsNeedUpdate) {
-                console.log(`Updating template: ${template.title}`);
-                state.notes[existingTemplateIndex].content = template.content;
-                state.notes[existingTemplateIndex].tags = template.tags;
-                state.notes[existingTemplateIndex].servings = template.servings;
-                state.notes[existingTemplateIndex].modified = new Date().toISOString();
-                state.notes[existingTemplateIndex].embedding = await callEmbeddingAPI(`${template.title}\n${template.content}`);
-                madeChanges = true;
-            }
-        } else {
-            console.log(`Creating new template: ${template.title}`);
-            const newTemplateNote = {
-                id: Date.now() + Math.random(),
-                title: template.title,
-                content: template.content,
-                folder: templateFolder,
-                tags: template.tags,
-                created: new Date().toISOString(),
-                modified: new Date().toISOString(),
-                embedding: await callEmbeddingAPI(`${template.title}\n${template.content}`),
-                servings: template.servings
-            };
-            state.notes.push(newTemplateNote);
-            madeChanges = true;
-        }
+    const originalNoteCount = state.notes.length;
+    // Remove all existing templates to ensure a clean slate
+    state.notes = state.notes.filter(note => note.folder !== templateFolder);
+    if (state.notes.length !== originalNoteCount) {
+        madeChanges = true;
     }
 
-    // Remove obsolete templates from user's notes
-    const templatesToRemove = state.notes.filter(note => 
-        note.folder === templateFolder && !templateTitlesFromCode.has(note.title)
-    );
+    const templates = getTemplates();
 
-    if (templatesToRemove.length > 0) {
-        templatesToRemove.forEach(t => console.log(`Removing obsolete template: ${t.title}`));
-        state.notes = state.notes.filter(note => !templatesToRemove.some(t => t.id === note.id));
+    // Re-create all templates from the latest code
+    for (const template of templates) {
+        const newTemplateNote = {
+            id: Date.now() + Math.random(), // Use random to avoid collision in loop
+            title: template.title,
+            content: template.content,
+            folder: templateFolder,
+            tags: template.tags || [],
+            created: new Date().toISOString(),
+            modified: new Date().toISOString(),
+            embedding: await callEmbeddingAPI(`${template.title}\n${template.content}`),
+            servings: template.servings
+        };
+        state.notes.push(newTemplateNote);
         madeChanges = true;
     }
     
@@ -1463,7 +1441,7 @@ async function ensureTemplatesExist() {
         renderFolders();
         renderTags();
         await saveData();
-        console.log("Default templates ensured/updated.");
+        console.log("Templates have been synchronized with the application code.");
     }
 }
 

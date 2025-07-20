@@ -1,6 +1,6 @@
 function debounce(func, delay) {
     let timeout;
-    return function(...args) {
+    return function (...args) {
         const context = this;
         clearTimeout(timeout);
         timeout = setTimeout(() => func.apply(context, args), delay);
@@ -199,7 +199,7 @@ function setupEventListeners() {
     saveNoteBtn.addEventListener('click', saveCurrentNote);
     deleteNoteBtn.addEventListener('click', deleteCurrentNote);
     closeEditorBtn.addEventListener('click', closeEditor);
-    
+
     searchInput.addEventListener('input', () => {
         if (searchInput.value.trim() === '') {
             clearSemanticSearch();
@@ -212,7 +212,7 @@ function setupEventListeners() {
             performSemanticSearch();
         }
     });
-    
+
     toggleHeaderBtn.addEventListener('click', toggleEditorHeader);
     closeAiResponseBtn.addEventListener('click', () => aiResponseModal.style.display = 'none');
     aiResponseModal.addEventListener('click', (e) => {
@@ -220,7 +220,7 @@ function setupEventListeners() {
             aiResponseModal.style.display = 'none';
         }
     });
-    
+
     aiResponseOutput.addEventListener('click', (e) => {
         const link = e.target.closest('a');
         if (link && link.dataset.noteId) {
@@ -470,7 +470,7 @@ async function findSemanticallyRelevantNotes(command, maxNotes = 5) {
 
     const sortedNotes = scoredNotes.sort((a, b) => b.score - a.score);
 
-    console.log("Top scoring notes:", sortedNotes.slice(0, maxNotes).map(n => ({title: n.note.title, score: n.score})));
+    console.log("Top scoring notes:", sortedNotes.slice(0, maxNotes).map(n => ({ title: n.note.title, score: n.score })));
     return sortedNotes.slice(0, maxNotes).map(item => item.note);
 }
 
@@ -512,17 +512,17 @@ TOOL-USE INSTRUCTIONS:
 
 1. tool: "ANSWER_QUESTION"
    - Use this if the command is a question.
-   - ***IMPORTANT***: When you reference a specific note in your answer, you MUST create a markdown link to it using its ID in this exact format: \`[The Note's Title](app://note/THE_NOTE_ID)\`. This is mandatory for linking to work.
-   - Example: If the user asks for recipes, you might respond with: "Here are the recipes I found:\\n- [Chocolate Chip Cookies](app://note/1704067200000)\\n- [Nemme Havregrynskager](app://note/1709251200000)"
-   - If no notes seem relevant, say you couldn't find an answer in the notes.
+   - When you reference a specific note, you MUST create a markdown link to it using its ID in this exact format: \`[The Note's Title](app://note/THE_NOTE_ID)\`.
    - args: { "answer": "The full, markdown-formatted answer." }
 
 2. tool: "CREATE_NOTE"
    - Use this for commands that clearly ask to save new information.
+   - **CRITICAL**: The 'content' you generate MUST be well-formatted markdown. Use headings, lists, bold text, and newlines (\`\\n\`) to make the note clear and readable. For example, if saving a recipe, use headings for 'Ingredients' and 'Instructions'.
    - args: { "title": "New Note Title", "content": "Markdown content...", "folder": "Folder Name", "newFolder": true/false }
 
 3. tool: "UPDATE_NOTE"
    - Use this to modify an existing note based on the 'Relevant Existing Notes'.
+   - **CRITICAL**: The 'newContent' you generate MUST be the complete, well-formatted markdown for the entire note.
    - args: { "targetTitle": "Full Title of Note to Update", "newTitle": "Updated Title", "newContent": "Full new content..." }
 
 4. tool: "DELETE_NOTE"
@@ -589,12 +589,12 @@ Now, analyze all the provided data and return the single JSON object for the cor
                 if (!args || !args.targetTitle || !args.newContent) throw new Error("AI chose UPDATE_NOTE with incomplete arguments.");
                 const noteIndex = state.notes.findIndex(n => n.title === args.targetTitle);
                 if (noteIndex === -1) throw new Error(`AI tried to update a note titled "${args.targetTitle}" which does not exist.`);
-                
+
                 state.notes[noteIndex].title = args.newTitle || args.targetTitle;
                 state.notes[noteIndex].content = args.newContent;
                 state.notes[noteIndex].modified = new Date().toISOString();
                 state.notes[noteIndex].embedding = await callEmbeddingAPI(`${state.notes[noteIndex].title}\n${state.notes[noteIndex].content}`);
-                
+
                 openNote(state.notes[noteIndex]);
                 shouldSave = true;
                 break;
@@ -603,7 +603,7 @@ Now, analyze all the provided data and return the single JSON object for the cor
                 if (!args || !args.targetTitle) throw new Error("AI chose DELETE_NOTE with incomplete arguments.");
                 const noteToDelete = state.notes.find(n => n.title === args.targetTitle);
                 if (!noteToDelete) throw new Error(`AI tried to delete a note titled "${args.targetTitle}" which does not exist.`);
-                
+
                 if (confirm(`Are you sure you want to delete the note: "${noteToDelete.title}"?`)) {
                     state.notes = state.notes.filter(n => n.id !== noteToDelete.id);
                     if (state.currentNote && state.currentNote.id === noteToDelete.id) closeEditor();
@@ -643,8 +643,8 @@ async function performSemanticSearch() {
 
     try {
         const relevantNotes = await findSemanticallyRelevantNotes(query, 10);
-        renderNotes(relevantNotes); 
-        
+        renderNotes(relevantNotes);
+
         currentFolderName.innerHTML = `Semantic Results 
             <button id="clearSearchBtn" title="Clear Semantic Search">
                 <i class="fas fa-times-circle"></i>
@@ -680,11 +680,11 @@ function renderFolders() {
         const folderEl = document.createElement('div');
         folderEl.className = `folder-item ${state.currentFolder === folder ? 'active' : ''}`;
         folderEl.onclick = () => selectFolder(folder);
-        
+
         const nameSpan = document.createElement('span');
         nameSpan.className = 'folder-name';
         nameSpan.innerHTML = `<i class="fas fa-folder"></i> ${folder}`;
-        
+
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'delete-folder-btn';
         deleteBtn.title = `Delete folder "${folder}"`;
@@ -780,7 +780,7 @@ async function deleteFolder(folderName) {
         }
 
         state.folders = state.folders.filter(f => f !== folderName);
-        
+
         if (state.currentFolder === folderName) {
             selectFolder('All Notes');
         } else {
@@ -823,7 +823,7 @@ function openNote(note) {
     state.originalNoteContent = note.content;
     editorPanel.style.display = 'flex';
     setEditorMode('preview');
-    setDirtyState(false); 
+    setDirtyState(false);
     if (window.innerWidth <= 768) {
         toggleHeaderBtn.style.display = 'flex';
     }
@@ -879,18 +879,18 @@ async function saveCurrentNote() {
         const newEmbedding = await callEmbeddingAPI(`${newTitle}\n${newContent}`);
         state.notes[noteIndex].embedding = newEmbedding;
     }
-    
-    state.originalNoteContent = newContent; 
+
+    state.originalNoteContent = newContent;
     state.currentNote = state.notes[noteIndex];
-    
+
     await saveData();
-    
+
     if (!state.isSemanticSearching) {
         renderNotes();
     }
-    
-    setDirtyState(false); 
-    
+
+    setDirtyState(false);
+
     saveNoteBtn.innerHTML = '<i class="fas fa-check"></i> Saved!';
     state.saveTimeout = setTimeout(() => {
         saveNoteBtn.innerHTML = SAVE_BUTTON_DEFAULT_HTML;
@@ -985,7 +985,7 @@ function loadTypography() {
 function renderFontSelector() {
     fontFamilySelector.innerHTML = '';
     const sortedFonts = [...FONTS].sort((a, b) => a.name.localeCompare(b.name));
-    
+
     sortedFonts.forEach(font => {
         const option = document.createElement('option');
         option.value = font.family;
@@ -997,7 +997,7 @@ function renderFontSelector() {
 
 function updateTypographyControls() {
     fontFamilySelector.value = userPreferences.fontFamily;
-    
+
     const size = parseInt(userPreferences.fontSize, 10);
     fontSizeSlider.value = size;
     fontSizeValue.textContent = `${size}px`;

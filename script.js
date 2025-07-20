@@ -288,8 +288,26 @@ Example for "add milk to my grocery list": {"intent": "UPDATE", "targetTitle": "
         if (!intentResponse.ok) throw new Error("Could not determine intent from the command.");
 
         const intentResult = await intentResponse.json();
-        const intentText = intentResult.candidates[0].content.parts[0].text;
-        const { intent, targetTitle } = JSON.parse(intentText.match(/\{[\s\S]*\}/)[0]);
+        
+        if (!intentResult.candidates || intentResult.candidates.length === 0) {
+            console.error('Gemini intent response:', intentResult);
+            throw new Error("AI response for intent detection is empty or invalid. Check console for details.");
+        }
+        
+        const intentCandidate = intentResult.candidates[0];
+        if (intentCandidate.finishReason && intentCandidate.finishReason !== "STOP") {
+            throw new Error(`AI processing for intent stopped unexpectedly. Reason: ${intentCandidate.finishReason}.`);
+        }
+        
+        const intentText = intentCandidate.content.parts[0].text;
+        const intentJsonMatch = intentText.match(/\{[\s\S]*\}/);
+        
+        if (!intentJsonMatch) {
+            console.error("Could not extract JSON from AI intent response:", intentText);
+            throw new Error("AI did not respond with valid JSON for intent detection.");
+        }
+        
+        const { intent, targetTitle } = JSON.parse(intentJsonMatch[0]);
 
         console.log(`Intent Detected: ${intent}`, `Target: ${targetTitle || 'N/A'}`);
 
@@ -330,15 +348,25 @@ Response Format:
 
                 if (!mainResponse.ok) throw new Error("Failed to get update from AI.");
                 const mainResult = await mainResponse.json();
+
+                if (!mainResult.candidates || mainResult.candidates.length === 0) {
+                    console.error('Gemini update response:', mainResult);
+                    throw new Error("AI response for update is empty or invalid. Check console for details.");
+                }
                 const candidate = mainResult.candidates[0];
 
-                // --- THE CORRECT FIX IS HERE: Check finishReason BEFORE parsing ---
-                if (candidate.finishReason !== "STOP") {
+                if (candidate.finishReason && candidate.finishReason !== "STOP") {
                     throw new Error(`AI processing stopped unexpectedly. Reason: ${candidate.finishReason}. The response may be too large for the model's limit.`);
                 }
 
                 const mainText = candidate.content.parts[0].text;
-                const payload = JSON.parse(mainText.match(/\{[\s\S]*\}/)[0]);
+                const payloadMatch = mainText.match(/\{[\s\S]*\}/);
+
+                if (!payloadMatch) {
+                    console.error("Could not extract JSON from AI update response:", mainText);
+                    throw new Error("AI did not respond with valid JSON for the note update.");
+                }
+                const payload = JSON.parse(payloadMatch[0]);
 
                 const noteIndex = state.notes.findIndex(n => n.id === noteToUpdate.id);
                 state.notes[noteIndex].title = payload.title || noteToUpdate.title;
@@ -393,15 +421,27 @@ Response Format: You MUST respond with ONLY a single, valid JSON object.
 
                 if (!mainResponse.ok) throw new Error("Failed to get new note from AI.");
                 const mainResult = await mainResponse.json();
+                
+                // --- START: Robust Parsing for Create ---
+                if (!mainResult.candidates || mainResult.candidates.length === 0) {
+                    console.error('Gemini create response:', mainResult);
+                    throw new Error("AI response for creation is empty or invalid. Check console for details.");
+                }
                 const candidate = mainResult.candidates[0];
 
-                // --- THE CORRECT FIX IS HERE: Check finishReason BEFORE parsing ---
-                if (candidate.finishReason !== "STOP") {
+                if (candidate.finishReason && candidate.finishReason !== "STOP") {
                     throw new Error(`AI processing stopped unexpectedly. Reason: ${candidate.finishReason}. The response may be too large for the model's limit.`);
                 }
 
                 const mainText = candidate.content.parts[0].text;
-                const payload = JSON.parse(mainText.match(/\{[\s\S]*\}/)[0]);
+                const payloadMatch = mainText.match(/\{[\s\S]*\}/);
+
+                if (!payloadMatch) {
+                    console.error("Could not extract JSON from AI create response:", mainText);
+                    throw new Error("AI did not respond with valid JSON for the new note.");
+                }
+                const payload = JSON.parse(payloadMatch[0]);
+                // --- END: Robust Parsing for Create ---
 
                 if (payload.isNewFolder && !state.folders.includes(payload.folder)) {
                     state.folders.push(payload.folder);

@@ -195,6 +195,8 @@ function setupEventListeners() {
     elements.noteEditor.addEventListener('input', handleNoteChange);
     elements.noteEditor.addEventListener('input', handleEditorAutocomplete);
     elements.noteEditor.addEventListener('keydown', handleEditorAutocompleteKeydown);
+    elements.noteEditor.addEventListener('mouseup', handleEditorSelectionChange);
+    elements.noteEditor.addEventListener('keyup', handleEditorSelectionChange);
     elements.aiActionsBtn.addEventListener('mousedown', toggleAiActionsMenu);
     elements.aiActionsMenu.addEventListener('click', handleAiActionClick);
     elements.noteTagInput.addEventListener('keydown', handleTagInput);
@@ -213,7 +215,6 @@ function setupEventListeners() {
         }
     });
 
-    document.addEventListener('selectionchange', handleSelectionChange);
 }
 
 function setupModalEventListeners() {
@@ -2134,17 +2135,16 @@ function populateAiActionsMenu() {
     });
 }
 
-function handleSelectionChange() {
-    // The button's state should only depend on whether there is a selection in the editor,
-    // not whether the editor has focus. This prevents a race condition where clicking the button
-    // causes the editor to lose focus and disable the button before the click event fires.
-    if (state.currentNote) {
-        const selection = elements.noteEditor.value.substring(elements.noteEditor.selectionStart, elements.noteEditor.selectionEnd);
-        elements.aiActionsBtn.disabled = selection.trim().length < 10;
-    } else {
-        // If no note is open, the button should definitely be disabled.
-        elements.aiActionsBtn.disabled = true;
-    }
+function handleEditorSelectionChange() {
+    // Use a small timeout to allow the browser to finalize the selection action
+    setTimeout(() => {
+        if (state.currentNote) {
+            const selection = elements.noteEditor.value.substring(elements.noteEditor.selectionStart, elements.noteEditor.selectionEnd);
+            elements.aiActionsBtn.disabled = selection.trim().length < 10;
+        } else {
+            elements.aiActionsBtn.disabled = true;
+        }
+    }, 50);
 }
 
 function handleAiActionClick(e) {

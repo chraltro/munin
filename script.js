@@ -25,8 +25,8 @@ let state = {
     gistId: null,
     isNoteDirty: false,
     originalNoteContent: '', // Used to check if content changed for embedding
-    isSemanticSearching: false, // --- NEW: Track semantic search state
-    saveTimeout: null // --- NEW: To manage the save button's "Saved!" state
+    isSemanticSearching: false,
+    saveTimeout: null
 };
 
 const THEMES = [
@@ -201,13 +201,11 @@ function setupEventListeners() {
     deleteNoteBtn.addEventListener('click', deleteCurrentNote);
     closeEditorBtn.addEventListener('click', closeEditor);
     
-    // --- UPDATED: Search input listeners ---
     searchInput.addEventListener('input', () => {
-        // If user clears the input, reset the view
         if (searchInput.value.trim() === '') {
             clearSemanticSearch();
         } else {
-            renderNotes(); // Normal keyword filtering while typing
+            renderNotes();
         }
     });
     searchInput.addEventListener('keypress', (e) => {
@@ -223,6 +221,24 @@ function setupEventListeners() {
             aiResponseModal.style.display = 'none';
         }
     });
+    
+    // --- NEW: Intercept clicks inside the AI response modal ---
+    aiResponseOutput.addEventListener('click', (e) => {
+        const link = e.target.closest('a');
+        if (link && link.getAttribute('href')?.startsWith('app://note/')) {
+            e.preventDefault();
+            const noteId = parseInt(link.getAttribute('href').split('/').pop(), 10);
+            const noteToOpen = state.notes.find(n => n.id === noteId);
+            if (noteToOpen) {
+                openNote(noteToOpen);
+                aiResponseModal.style.display = 'none';
+            } else {
+                console.warn(`Attempted to open a link to a non-existent note with ID ${noteId}`);
+                alert(`Error: The note this link points to (ID: ${noteId}) could not be found.`);
+            }
+        }
+    });
+
     changeThemeBtn.addEventListener('click', () => themeModal.style.display = 'flex');
     closeThemeModalBtn.addEventListener('click', () => themeModal.style.display = 'none');
     themeModal.addEventListener('click', (e) => {
@@ -375,7 +391,7 @@ async function saveData() {
 }
 
 async function callGeminiAPI(prompt, generationConfig) {
-    const modelsToTry = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-1.5-flash'];
+    const modelsToTry = ['gemini-2.5-flash', 'gemini-1.5-flash'];
     let lastError = null;
 
     for (const model of modelsToTry) {
@@ -485,29 +501,29 @@ Here is all the data you need:
 2. Existing Folders:
 ${JSON.stringify(state.folders)}
 
-3. Relevant Existing Notes (Title and Content):
-${JSON.stringify(relevantNotes.map(n => ({ title: n.title, content: n.content })))}
+3. Relevant Existing Notes (ID, Title, and Content):
+${JSON.stringify(relevantNotes.map(n => ({ id: n.id, title: n.title, content: n.content })))}
 
 ---
 TOOL-USE INSTRUCTIONS:
 
 1. tool: "ANSWER_QUESTION"
-   - Use this if the command is a question that can be answered using the provided notes as context, or from general knowledge if no note is relevant. If no notes seem relevant, say you couldn't find an answer in the notes.
-   - Example: "how much natron is in the chocolate cake?" -> Checks the "Chocolate Cake" note first.
+   - Use this if the command is a question.
+   - ***IMPORTANT***: When you reference a specific note in your answer, you MUST create a markdown link to it using its ID in this exact format: \`[The Note's Title](app://note/THE_NOTE_ID)\`. This is mandatory for linking to work.
+   - Example: If the user asks for recipes, you might respond with: "Here are the recipes I found:\\n- [Chocolate Chip Cookies](app://note/1704067200000)\\n- [Nemme Havregrynskager](app://note/1709251200000)"
+   - If no notes seem relevant, say you couldn't find an answer in the notes.
    - args: { "answer": "The full, markdown-formatted answer." }
 
 2. tool: "CREATE_NOTE"
-   - Use this to create a new note.
-   - If the command implies using an existing note (e.g., "make a grocery list for the pancakes"), USE THE CONTEXT FROM THAT NOTE to generate the new content.
-   - If the user specifies a new folder that doesn't exist, you MUST set "newFolder" to true.
+   - Use this for commands that clearly ask to save new information.
    - args: { "title": "New Note Title", "content": "Markdown content...", "folder": "Folder Name", "newFolder": true/false }
 
 3. tool: "UPDATE_NOTE"
-   - Use this to modify an existing note. Identify the note to update from the 'Relevant Existing Notes'.
+   - Use this to modify an existing note based on the 'Relevant Existing Notes'.
    - args: { "targetTitle": "Full Title of Note to Update", "newTitle": "Updated Title", "newContent": "Full new content..." }
 
 4. tool: "DELETE_NOTE"
-   - Use this to delete an existing note. Identify the note to delete from the 'Relevant Existing Notes'.
+   - Use this to delete a note based on the 'Relevant Existing Notes'.
    - args: { "targetTitle": "Full Title of Note to Delete" }
 
 ---
@@ -615,7 +631,6 @@ Now, analyze all the provided data and return the single JSON object for the cor
     }
 }
 
-// --- NEW: Perform semantic search on the main search bar ---
 async function performSemanticSearch() {
     const query = searchInput.value.trim();
     if (!query) return;
@@ -624,8 +639,8 @@ async function performSemanticSearch() {
     state.isSemanticSearching = true;
 
     try {
-        const relevantNotes = await findSemanticallyRelevantNotes(query, 10); // Show top 10 results
-        renderNotes(relevantNotes); // Re-render the list with only these notes
+        const relevantNotes = await findSemanticallyRelevantNotes(query, 10);
+        renderNotes(relevantNotes); 
         
         currentFolderName.innerHTML = `Semantic Results 
             <button id="clearSearchBtn" title="Clear Semantic Search">
@@ -645,7 +660,7 @@ async function performSemanticSearch() {
 function clearSemanticSearch() {
     state.isSemanticSearching = false;
     searchInput.value = '';
-    selectFolder(state.currentFolder); // This will reset the view and title
+    selectFolder(state.currentFolder);
 }
 
 
@@ -695,10 +710,8 @@ function renderNotes(notesToShow = null) {
     let notesToDisplay;
 
     if (notesToShow) {
-        // If specific notes are passed (e.g., from semantic search), use them
         notesToDisplay = notesToShow;
     } else {
-        // Otherwise, perform default folder and keyword filtering
         notesToDisplay = state.currentFolder === 'All Notes'
             ? state.notes
             : state.notes.filter(n => n.folder === state.currentFolder);
@@ -869,7 +882,11 @@ async function saveCurrentNote() {
     state.currentNote = state.notes[noteIndex];
     
     await saveData();
-    renderNotes();
+    
+    if (!state.isSemanticSearching) {
+        renderNotes();
+    }
+    
     setDirtyState(false); 
     
     saveNoteBtn.innerHTML = '<i class="fas fa-check"></i> Saved!';

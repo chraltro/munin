@@ -46,7 +46,7 @@ TOOL-USE INSTRUCTIONS:
      1. First step...
      2. Second step...
      \`\`\`
-   - When creating a recipe, you MUST set the 'folder' to "Recipes" and add a 'servings' argument to the JSON (e.g., \`"servings": 4\`). The ingredient lines in the markdown 'content' MUST start with a list marker and a quantity.
+   - When creating a recipe, you MUST set the 'folder' to "Recipes" and add a 'servings' argument to the JSON (e.g., \`"servings": 4\`). The ingredient lines in the markdown 'content' MUST start with a list marker and a quantity. **Do NOT include a 'Servings' line in the markdown content itself, as this is handled by the app's metadata.**
    - **args for a regular note**: { "title": "...", "content": "...", "folder": "...", "tags": ["Relevant", "Keywords"], "newFolder": true/false }
    - **args for a RECIPE**: { "title": "...", "content": "...", "folder": "Recipes", "tags": ["Recipe", "Dessert"], "servings": 4, "newFolder": false }
 

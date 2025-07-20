@@ -154,7 +154,7 @@ function toggleEditorHeader() {
 async function testGeminiAPI() {
     try {
         const testPrompt = 'Say "Hello World" in JSON format: {"message": "Hello World"}';
-        const result = await callGeminiAPI(testPrompt, { maxOutputTokens: 50 });
+        const result = await callGeminiAPI(testPrompt, { maxOutputTokens: 2048 });
         if (result && result.candidates) {
             return result;
         }
@@ -328,7 +328,7 @@ Examples:
 - User: "what is the capital of France?" -> {"intent": "QUERY", "targetTitle": null}
 - User: "do the pancakes need baking powder?" -> {"intent": "QUERY", "targetTitle": null}
 `;
-        const intentResult = await callGeminiAPI(intentPrompt, { temperature: 0.0, maxOutputTokens: 200 });
+        const intentResult = await callGeminiAPI(intentPrompt, { temperature: 0.0, maxOutputTokens: 2048 });
 
         if (!intentResult.candidates || intentResult.candidates.length === 0) {
             console.error("FATAL: AI response contained no candidates. Full API Response:", intentResult);
@@ -359,7 +359,7 @@ Examples:
             case 'QUERY': {
                 showLoading(true, 'Finding an answer...');
                 const queryPrompt = `You are a helpful assistant. Provide a clear and concise answer to the following question. Format the response in Markdown.\n\nQuestion: "${command}"`;
-                const mainResult = await callGeminiAPI(queryPrompt, { temperature: 0.5, maxOutputTokens: 2048 });
+                const mainResult = await callGeminiAPI(queryPrompt, { temperature: 0.5, maxOutputTokens: 65536 });
 
                 if (!mainResult.candidates || mainResult.candidates.length === 0) {
                     throw new Error("AI failed to provide an answer.");
@@ -383,7 +383,7 @@ Examples:
                 }
                 showLoading(true, 'Updating note...');
                 const updatePrompt = `You are an AI note editor. Update the following note based on the user's command. Respond with ONLY a single JSON object containing the full, updated "title" and "content".\n\nUser Command: "${command}"\n\nOriginal Note:\n---\n${JSON.stringify({ title: noteToUpdate.title, content: noteToUpdate.content })}\n---`;
-                const mainResult = await callGeminiAPI(updatePrompt, { temperature: 0.5, maxOutputTokens: 8192 });
+                const mainResult = await callGeminiAPI(updatePrompt, { temperature: 0.5, maxOutputTokens: 65536 });
 
                 if (!mainResult.candidates || !mainResult.candidates.length === 0) throw new Error("AI response for note update is empty or invalid.");
                 const candidate = mainResult.candidates[0];
@@ -422,7 +422,7 @@ Examples:
             case 'CREATE': {
                 showLoading(true, 'Creating note...');
                 const createPrompt = `Process a user command to create a new note. Respond with ONLY a single, valid JSON object with "title", "content", and "folder". Choose the folder from this list: ${JSON.stringify(state.folders)}\n\nUser Command: "${command}"`;
-                const mainResult = await callGeminiAPI(createPrompt, { temperature: 0.7, maxOutputTokens: 8192 });
+                const mainResult = await callGeminiAPI(createPrompt, { temperature: 0.7, maxOutputTokens: 65536 });
 
                 if (!mainResult.candidates || mainResult.candidates.length === 0) throw new Error("AI response for note creation is empty or invalid.");
                 const candidate = mainResult.candidates[0];

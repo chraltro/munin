@@ -216,7 +216,7 @@ function setupEventListeners() {
     elements.closeAiResponseBtn.addEventListener('click', () => elements.aiResponseModal.style.display = 'none');
     elements.changeThemeBtn.addEventListener('click', () => elements.themeModal.style.display = 'flex');
     elements.closeThemeModalBtn.addEventListener('click', () => elements.themeModal.style.display = 'none');
-    elements.mobileFolderSelector.addEventListener('change', (e) => selectFolder(e.target.value));
+    elements.mobileFolderSelector.addEventListener('change', handleMobileSelectorChange);
     elements.fontFamilySelector.addEventListener('change', handleFontChange);
     elements.fontSizeSlider.addEventListener('input', handleFontSizeChange);
     elements.lineHeightSlider.addEventListener('input', handleLineHeightChange);
@@ -1024,14 +1024,41 @@ function renderFolders() {
         elements.folderList.appendChild(folderEl);
     });
 
-    elements.mobileFolderSelector.innerHTML = '<option value="All Notes">All Notes</option>';
+    // Mobile selector logic
+    elements.mobileFolderSelector.innerHTML = '';
+    
+    const allNotesOption = document.createElement('option');
+    allNotesOption.value = 'folder:All Notes';
+    allNotesOption.textContent = 'All Notes';
+    elements.mobileFolderSelector.appendChild(allNotesOption);
+
+    const foldersGroup = document.createElement('optgroup');
+    foldersGroup.label = 'Folders';
     state.folders.forEach(folder => {
         const option = document.createElement('option');
-        option.value = folder;
+        option.value = `folder:${folder}`;
         option.textContent = folder;
-        elements.mobileFolderSelector.appendChild(option);
+        foldersGroup.appendChild(option);
     });
-    elements.mobileFolderSelector.value = state.currentFolder;
+    elements.mobileFolderSelector.appendChild(foldersGroup);
+
+    if (state.allTags.length > 0) {
+        const tagsGroup = document.createElement('optgroup');
+        tagsGroup.label = 'Tags';
+        state.allTags.forEach(tag => {
+            const option = document.createElement('option');
+            option.value = `tag:${tag}`;
+            option.textContent = `#${tag}`;
+            tagsGroup.appendChild(option);
+        });
+        elements.mobileFolderSelector.appendChild(tagsGroup);
+    }
+    
+    if (state.currentTag !== 'All Notes') {
+        elements.mobileFolderSelector.value = `tag:${state.currentTag}`;
+    } else {
+        elements.mobileFolderSelector.value = `folder:${state.currentFolder}`;
+    }
 }
 
 function renderNotes(notesToShow = null, animate = true) {
@@ -1622,6 +1649,18 @@ function handleLineHeightChange(e) {
     elements.lineHeightValue.textContent = parseFloat(height).toFixed(1);
     applyTypography(userPreferences);
     saveTypography();
+}
+
+function handleMobileSelectorChange(e) {
+    const value = e.target.value;
+    const [type, ...nameParts] = value.split(':');
+    const name = nameParts.join(':');
+
+    if (type === 'folder') {
+        selectFolder(name);
+    } else if (type === 'tag') {
+        selectTag(name);
+    }
 }
 
 function handleDragStart(e) {

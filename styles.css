@@ -505,9 +505,7 @@ body {
 }
 
 .note-card.is-dragging {
-    opacity: 0.5;
-    border-style: dashed;
-    transform: scale(0.95) !important;
+    opacity: 0;
 }
 
 .folder-item.droppable-hover,
@@ -1268,7 +1266,6 @@ body {
     border: 2px solid transparent;
     transition: var(--transition);
     aspect-ratio: 1 / 1;
-    align-self: start;
 }
 
 .theme-card:hover {

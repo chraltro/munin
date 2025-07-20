@@ -26,7 +26,9 @@ let state = {
     isEmbeddingStale: false,
     originalNoteContent: '',
     isSemanticSearching: false,
-    saveTimeout: null
+    saveTimeout: null,
+    currentServings: null,
+    baseServings: null
 };
 
 const THEMES = [
@@ -208,6 +210,9 @@ function setupEventListeners() {
     elements.fontFamilySelector.addEventListener('change', handleFontChange);
     elements.fontSizeSlider.addEventListener('input', handleFontSizeChange);
     elements.lineHeightSlider.addEventListener('input', handleLineHeightChange);
+    elements.servingsDecrement.addEventListener('click', () => updateServings(-1));
+    elements.servingsIncrement.addEventListener('click', () => updateServings(1));
+    elements.servingsInput.addEventListener('change', handleServingsInputChange);
     elements.noteTitle.addEventListener('input', handleNoteChange);
     elements.noteEditor.addEventListener('input', handleNoteChange);
     elements.currentFolderName.addEventListener('click', handleFolderNameClick);
@@ -373,6 +378,44 @@ function handleFolderNameClick() {
     if (state.currentFolder !== 'All Notes' && !state.isSemanticSearching) {
         renameFolder(state.currentFolder);
     }
+}
+
+function updateServings(change) {
+    const currentVal = parseInt(elements.servingsInput.value, 10);
+    const newVal = Math.max(1, currentVal + change);
+    elements.servingsInput.value = newVal;
+    state.currentServings = newVal;
+    setEditorMode('preview');
+}
+
+function handleServingsInputChange(e) {
+    const newVal = Math.max(1, parseInt(e.target.value, 10) || state.baseServings);
+    e.target.value = newVal;
+    state.currentServings = newVal;
+    setEditorMode('preview');
+}
+
+function scaleRecipeContent(content, baseServings, newServings) {
+    if (!baseServings || !newServings || baseServings === newServings) {
+        return content;
+    }
+    const scaleFactor = newServings / baseServings;
+
+    return content.split('\n').map(line => {
+        const match = line.match(/^(\s*[-*+]\s*|\s*\d+\.\s+)(\d*\.?\d+)(.*)/);
+        if (match) {
+            const prefix = match[1];
+            const originalAmount = parseFloat(match[2]);
+            const restOfLine = match[3];
+
+            if (!isNaN(originalAmount)) {
+                let newAmount = originalAmount * scaleFactor;
+                let formattedAmount = parseFloat(newAmount.toFixed(2));
+                return `${prefix}${formattedAmount}${restOfLine}`;
+            }
+        }
+        return line;
+    }).join('\n');
 }
 
 function toggleEditorHeader() {
@@ -649,7 +692,12 @@ TOOL-USE INSTRUCTIONS:
 2. tool: "CREATE_NOTE"
    - Use this for commands that clearly ask to save new information.
    - **CRITICAL**: The 'content' you generate MUST be well-formatted markdown. Use headings, lists, bold text, and newlines (\`\\n\`) to make the note clear and readable.
-   - args: { "title": "New Note Title", "content": "Markdown content...", "folder": "Folder Name", "newFolder": true/false }
+   - **If the note is a RECIPE, you MUST follow these rules**:
+     1. Set `folder` to "Recipes".
+     2. Add a `servings` argument (e.g., \`"servings": 4\`).
+     3. For every ingredient in the markdown `content`, the line MUST start with a number (e.g., \`- 250g flour\`, \`* 2 eggs\`). This is required for scaling.
+   - **args for a regular note**: { "title": "...", "content": "...", "folder": "...", "newFolder": true/false }
+   - **args for a RECIPE**: { "title": "...", "content": "...", "folder": "Recipes", "servings": 4, "newFolder": false }
 
 3. tool: "UPDATE_NOTE"
    - Use this to modify an existing note based on the 'Relevant Existing Notes'.
@@ -720,6 +768,10 @@ async function executeAITool(tool, args) {
             if (!args || !args.title || !args.content || !args.folder) {
                 throw new Error("AI chose CREATE_NOTE with incomplete arguments.");
             }
+            if (args.folder === 'Recipes' && !args.servings) {
+                showNotification("AI created a recipe without servings. Defaulting to 4.", "warning");
+                args.servings = 4;
+            }
             
             if (args.newFolder && !state.folders.includes(args.folder)) {
                 state.folders.push(args.folder);
@@ -733,7 +785,8 @@ async function executeAITool(tool, args) {
                 folder: args.folder,
                 created: new Date().toISOString(),
                 modified: new Date().toISOString(),
-                embedding: await callEmbeddingAPI(`${args.title}\n${args.content}`)
+                embedding: await callEmbeddingAPI(`${args.title}\n${args.content}`),
+                servings: args.folder === 'Recipes' ? args.servings : undefined
             };
             
             state.notes.push(newNote);
@@ -1078,6 +1131,17 @@ function openNote(note) {
     elements.noteTitle.value = note.title;
     elements.noteEditor.value = note.content;
     state.originalNoteContent = note.content;
+
+    if (note.folder === 'Recipes' && note.servings) {
+        state.baseServings = note.servings;
+        state.currentServings = note.servings;
+        elements.servingsInput.value = note.servings;
+        elements.recipeScaler.style.display = 'flex';
+    } else {
+        elements.recipeScaler.style.display = 'none';
+        state.baseServings = null;
+        state.currentServings = null;
+    }
     
     state.isNoteDirty = false;
     state.isEmbeddingStale = false;
@@ -1101,6 +1165,10 @@ function closeEditor() {
         };
         performBackgroundSave(noteToSave);
     }
+
+    elements.recipeScaler.style.display = 'none';
+    state.baseServings = null;
+    state.currentServings = null;
 
     elements.editorPanel.classList.remove('is-open');
     state.currentNote = null;
@@ -1126,7 +1194,12 @@ function setEditorMode(mode) {
         elements.notePreview.style.display = 'block';
         elements.editModeBtn.classList.remove('active');
         elements.previewModeBtn.classList.add('active');
-        elements.notePreview.innerHTML = renderSanitizedHTML(elements.noteEditor.value);
+        
+        let contentToRender = elements.noteEditor.value;
+        if (state.currentNote && state.currentNote.folder === 'Recipes' && state.baseServings) {
+            contentToRender = scaleRecipeContent(contentToRender, state.baseServings, state.currentServings);
+        }
+        elements.notePreview.innerHTML = renderSanitizedHTML(contentToRender);
     }
 }
 

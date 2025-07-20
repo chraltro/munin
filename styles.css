@@ -784,6 +784,43 @@ body {
     border-color: var(--danger);
 }
 
+#recipeScaler {
+    gap: 0.5rem;
+}
+
+.servings-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.servings-input {
+    width: 60px;
+    padding: 0.5rem;
+    text-align: center;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-size: 1rem;
+    font-weight: 600;
+    -moz-appearance: textfield;
+}
+
+.servings-input::-webkit-outer-spin-button,
+.servings-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+#recipeScaler .toolbar-btn {
+    padding: 0.5rem 0.75rem;
+    font-weight: 600;
+}
+
 #noteEditor {
     flex: 1;
     padding: 1.5rem;

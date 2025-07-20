@@ -1221,6 +1221,16 @@ function renderNotes(notesToShow = null, animate = true) {
             }
         });
     } else { // List view
+        const header = document.createElement('div');
+        header.className = 'note-list-header';
+        header.innerHTML = `
+            <div class="note-list-header-title">Title</div>
+            <div class="note-list-header-tags">Tags</div>
+            <div class="note-list-header-folder">Folder</div>
+            <div class="note-list-header-modified">Modified</div>
+        `;
+        elements.notesList.appendChild(header);
+
         notesToDisplay.forEach((note, index) => {
             const noteListItem = document.createElement('div');
             noteListItem.className = 'note-list-item';
@@ -1235,22 +1245,14 @@ function renderNotes(notesToShow = null, animate = true) {
             noteListItem.addEventListener('dragend', handleDragEnd);
 
             const tagsHTML = (note.tags && note.tags.length > 0)
-                ? `<div class="note-card-tags">${note.tags.slice().sort((a, b) => a.localeCompare(b)).map(tag => `<span class="note-card-tag">${tag}</span>`).join('')}</div>`
+                ? note.tags.slice().sort((a, b) => a.localeCompare(b)).join(', ')
                 : '';
 
-            const preview = note.content.substring(0, 250).replace(/[#*`]/g, '');
-
             noteListItem.innerHTML = `
-                <div class="note-list-item-main">
-                    <h3 class="note-list-item-title">${note.title}</h3>
-                    <p class="note-list-item-excerpt">${preview}${note.content.length > 250 ? '...' : ''}</p>
-                    ${tagsHTML}
-                </div>
-                <div class="note-list-item-meta">
-                    <span title="Folder"><i class="fas fa-folder"></i> ${note.folder}</span>
-                    <span title="Created on ${new Date(note.created).toLocaleDateString()}"><i class="fas fa-calendar-days"></i> ${formatDate(note.created)}</span>
-                    <span title="Last modified on ${new Date(note.modified).toLocaleDateString()}"><i class="fas fa-clock"></i> ${formatDate(note.modified)}</span>
-                </div>
+                <span class="note-list-item-title">${note.title}</span>
+                <span class="note-list-item-tags">${tagsHTML}</span>
+                <span class="note-list-item-folder">${note.folder}</span>
+                <span class="note-list-item-modified">${formatDate(note.modified)}</span>
             `;
 
             elements.notesList.appendChild(noteListItem);

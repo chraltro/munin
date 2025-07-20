@@ -189,7 +189,8 @@ function setupEventListeners() {
     elements.loginForm.addEventListener('submit', handleLogin);
     elements.logoutBtn.addEventListener('click', handleLogout);
     elements.processBtn.addEventListener('click', processCommand);
-    elements.commandInput.addEventListener('keypress', handleCommandKeyPress);
+    elements.commandInput.addEventListener('keydown', handleCommandKeyPress);
+    elements.commandInput.addEventListener('input', autoResizeCommandInput);
     elements.newFolderBtn.addEventListener('click', createNewFolder);
     elements.newNoteBtn.addEventListener('click', createNewNote);
     elements.editModeBtn.addEventListener('click', () => setEditorMode('edit'));
@@ -337,9 +338,16 @@ function showMainApp() {
 }
 
 function handleCommandKeyPress(e) {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
         processCommand();
     }
+}
+
+function autoResizeCommandInput() {
+    const textarea = elements.commandInput;
+    textarea.style.height = 'auto';
+    textarea.style.height = `${textarea.scrollHeight}px`;
 }
 
 function handleSearchInput() {

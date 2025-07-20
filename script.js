@@ -20,6 +20,8 @@ let state = {
     notes: [],
     folders: ['Prompts', 'Recipes'],
     currentFolder: 'All Notes',
+    currentTag: 'All Notes',
+    allTags: [],
     currentNote: null,
     gistId: null,
     isNoteDirty: false,
@@ -88,12 +90,15 @@ const elements = {
     commandInput: document.getElementById('commandInput'),
     processBtn: document.getElementById('processBtn'),
     folderList: document.getElementById('folderList'),
+    tagList: document.getElementById('tagList'),
     notesList: document.getElementById('notesList'),
     currentFolderName: document.getElementById('currentFolderName'),
     newFolderBtn: document.getElementById('newFolderBtn'),
     newNoteBtn: document.getElementById('newNoteBtn'),
     editorPanel: document.getElementById('editorPanel'),
     noteTitle: document.getElementById('noteTitle'),
+    noteTagsContainer: document.getElementById('tags-input-area'),
+    noteTagInput: document.getElementById('noteTagInput'),
     noteEditor: document.getElementById('noteEditor'),
     notePreview: document.getElementById('notePreview'),
     editModeBtn: document.getElementById('editModeBtn'),
@@ -219,6 +224,7 @@ function setupEventListeners() {
     elements.servingsInput.addEventListener('change', handleServingsInputChange);
     elements.noteTitle.addEventListener('input', handleNoteChange);
     elements.noteEditor.addEventListener('input', handleNoteChange);
+    elements.noteTagInput.addEventListener('keydown', handleTagInput);
     elements.currentFolderName.addEventListener('click', handleFolderNameClick);
 
     setupModalEventListeners();
@@ -341,6 +347,7 @@ function showMainApp() {
     elements.loginScreen.style.display = 'none';
     elements.mainApp.style.display = 'flex';
     renderFolders();
+    renderTags();
     renderThemeSwitchers();
     renderFontSelector();
     testGeminiAPI();
@@ -546,11 +553,19 @@ async function loadData() {
             const content = JSON.parse(data.files[APP_CONFIG.gistFilename].content);
             state.notes = content.notes || [];
             state.folders = content.folders || state.folders;
+            // Ensure all notes have a tags array for backward compatibility
+            state.notes.forEach(note => {
+                if (!note.tags) {
+                    note.tags = [];
+                }
+            });
+            updateAllTags();
         } else {
             await saveData();
         }
         
         renderFolders();
+        renderTags();
         renderNotes();
         updateSaveStatus('Loaded');
     } catch (error) {
@@ -744,8 +759,8 @@ Here is all the data you need:
 2. Existing Folders:
 ${JSON.stringify(state.folders)}
 
-3. Relevant Existing Notes (ID, Title, and Content):
-${JSON.stringify(relevantNotes.map(n => ({ id: n.id, title: n.title, content: n.content })))}
+3. Relevant Existing Notes (ID, Title, Tags, and Content):
+${JSON.stringify(relevantNotes.map(n => ({ id: n.id, title: n.title, tags: n.tags || [], content: n.content })))}
 
 ---
 TOOL-USE INSTRUCTIONS:
@@ -765,13 +780,13 @@ TOOL-USE INSTRUCTIONS:
      1. Set 'folder' to "Recipes".
      2. Add a 'servings' argument (e.g., \'"servings": 4\').
      3. For every ingredient in the markdown 'content', the line MUST be a list item starting with a numeric quantity (e.g., \`- 250g flour\`, \`* 2 eggs\`). This is required for scaling.
-   - **args for a regular note**: { "title": "...", "content": "...", "folder": "...", "newFolder": true/false }
-   - **args for a RECIPE**: { "title": "...", "content": "...", "folder": "Recipes", "servings": 4, "newFolder": false }
+   - **args for a regular note**: { "title": "...", "content": "...", "folder": "...", "tags": ["relevant", "keywords"], "newFolder": true/false }
+   - **args for a RECIPE**: { "title": "...", "content": "...", "folder": "Recipes", "tags": ["recipe", "dessert"], "servings": 4, "newFolder": false }
 
 3. tool: "UPDATE_NOTE"
    - Use this to modify an existing note based on the 'Relevant Existing Notes'.
    - **CRITICAL**: The 'newContent' you generate MUST be the complete, well-formatted markdown for the entire note.
-   - args: { "targetTitle": "Full Title of Note to Update", "newTitle": "Updated Title", "newContent": "Full new content..." }
+   - args: { "targetTitle": "Full Title of Note to Update", "newTitle": "Updated Title", "newContent": "Full new content...", "newTags": ["updated", "tags"] }
 
 4. tool: "DELETE_NOTE"
    - Use this to delete a note based on the 'Relevant Existing Notes'.
@@ -852,6 +867,7 @@ async function executeAITool(tool, args) {
                 title: args.title,
                 content: args.content,
                 folder: args.folder,
+                tags: args.tags || [],
                 created: new Date().toISOString(),
                 modified: new Date().toISOString(),
                 embedding: await callEmbeddingAPI(`${args.title}\n${args.content}`),
@@ -859,6 +875,7 @@ async function executeAITool(tool, args) {
             };
             
             state.notes.push(newNote);
+            updateAllTags();
             openNote(newNote);
             shouldSave = true;
             break;
@@ -875,10 +892,14 @@ async function executeAITool(tool, args) {
 
             state.notes[noteIndex].title = args.newTitle || args.targetTitle;
             state.notes[noteIndex].content = args.newContent;
+            if (args.newTags && Array.isArray(args.newTags)) {
+                state.notes[noteIndex].tags = args.newTags;
+            }
             state.notes[noteIndex].modified = new Date().toISOString();
             state.notes[noteIndex].embedding = await callEmbeddingAPI(`${state.notes[noteIndex].title}\n${state.notes[noteIndex].content}`);
 
             openNote(state.notes[noteIndex]);
+            updateAllTags();
             shouldSave = true;
             break;
 
@@ -909,6 +930,7 @@ async function executeAITool(tool, args) {
     if (shouldSave) {
         await saveData();
         renderNotes();
+        renderTags();
         updateSaveStatus('Saved');
     }
 }
@@ -1011,9 +1033,19 @@ function renderNotes(notesToShow = null, animate = true) {
     if (notesToShow) {
         notesToDisplay = notesToShow;
     } else {
-        notesToDisplay = state.currentFolder === 'All Notes'
-            ? state.notes
-            : state.notes.filter(n => n.folder === state.currentFolder);
+        let notesToDisplay_intermediate = state.notes;
+
+        // Filter by folder first
+        if (state.currentFolder !== 'All Notes') {
+            notesToDisplay_intermediate = notesToDisplay_intermediate.filter(n => n.folder === state.currentFolder);
+        }
+
+        // Then filter by tag
+        if (state.currentTag !== 'All Notes') {
+            notesToDisplay_intermediate = notesToDisplay_intermediate.filter(n => n.tags && n.tags.includes(state.currentTag));
+        }
+        
+        notesToDisplay = notesToDisplay_intermediate;
 
         const searchTerm = elements.searchInput.value.toLowerCase().trim();
         if (searchTerm) {
@@ -1052,9 +1084,15 @@ function renderNotes(notesToShow = null, animate = true) {
         noteCard.onclick = () => openNote(note);
         
         const preview = note.content.substring(0, 150).replace(/[#*`]/g, '');
+
+        const tagsHTML = (note.tags && note.tags.length > 0)
+            ? `<div class="note-card-tags">${note.tags.map(tag => `<span class="note-card-tag">${tag}</span>`).join('')}</div>`
+            : '';
+
         noteCard.innerHTML = `
             <h3>${note.title}</h3>
             <p>${preview}${note.content.length > 150 ? '...' : ''}</p>
+            ${tagsHTML}
             <div class="note-meta">
                 <span><i class="fas fa-folder"></i> ${note.folder}</span>
                 <span><i class="fas fa-clock"></i> ${formatDate(note.modified)}</span>
@@ -1074,10 +1112,55 @@ function renderNotes(notesToShow = null, animate = true) {
 function selectFolder(folder) {
     state.isSemanticSearching = false;
     state.currentFolder = folder;
+    state.currentTag = 'All Notes';
     elements.currentFolderName.innerHTML = folder;
     elements.searchInput.value = '';
     renderFolders();
+    renderTags();
     renderNotes();
+}
+
+function selectTag(tag) {
+    state.isSemanticSearching = false;
+    state.currentTag = tag;
+    
+    if (tag === 'All Notes') {
+        state.currentFolder = 'All Notes';
+        elements.currentFolderName.innerHTML = state.currentFolder;
+    } else {
+        state.currentFolder = 'All Notes'; // Filtering by tag implies all folders.
+        elements.currentFolderName.innerHTML = `Tag: <span class="tag-filter-name">${tag}</span>`;
+    }
+    
+    elements.searchInput.value = '';
+    renderFolders();
+    renderTags();
+    renderNotes();
+}
+
+function updateAllTags() {
+    const allTags = new Set();
+    state.notes.forEach(note => {
+        if (note.tags) {
+            note.tags.forEach(tag => allTags.add(tag));
+        }
+    });
+    state.allTags = Array.from(allTags).sort((a, b) => a.localeCompare(b));
+}
+
+function renderTags() {
+    elements.tagList.innerHTML = `
+        <span class="tag-item ${state.currentTag === 'All Notes' ? 'active' : ''}" onclick="selectTag('All Notes')">
+            All Notes
+        </span>
+    `;
+    state.allTags.forEach(tag => {
+        const tagEl = document.createElement('span');
+        tagEl.className = `tag-item ${state.currentTag === tag ? 'active' : ''}`;
+        tagEl.textContent = tag;
+        tagEl.onclick = () => selectTag(tag);
+        elements.tagList.appendChild(tagEl);
+    });
 }
 
 async function createNewFolder() {
@@ -1167,6 +1250,7 @@ async function createNewNote() {
         title: 'New Note',
         content: newContent,
         folder: state.currentFolder === 'All Notes' ? state.folders[0] || 'Prompts' : state.currentFolder,
+        tags: [],
         created: new Date().toISOString(),
         modified: new Date().toISOString(),
         embedding: newEmbedding
@@ -1198,6 +1282,7 @@ function openNote(note) {
 
     state.currentNote = note;
     elements.noteTitle.value = note.title;
+    renderNoteTags();
     elements.noteEditor.value = note.content;
     state.originalNoteContent = note.content;
 
@@ -1235,6 +1320,8 @@ function closeEditor() {
         performBackgroundSave(noteToSave);
     }
 
+    elements.noteTagsContainer.innerHTML = '';
+    elements.noteTagInput.value = '';
     elements.recipeScaler.style.display = 'none';
     state.baseServings = null;
     state.currentServings = null;
@@ -1313,9 +1400,12 @@ async function saveCurrentNote(regenerateEmbedding = false) {
 
     const newTitle = elements.noteTitle.value;
     const newContent = elements.noteEditor.value;
+    const newTags = Array.from(elements.noteTagsContainer.querySelectorAll('.tag-pill'))
+        .map(pill => pill.firstChild.textContent);
 
     state.notes[noteIndex].title = newTitle;
     state.notes[noteIndex].content = newContent;
+    state.notes[noteIndex].tags = newTags;
     state.notes[noteIndex].modified = new Date().toISOString();
 
     if (regenerateEmbedding) {
@@ -1329,6 +1419,9 @@ async function saveCurrentNote(regenerateEmbedding = false) {
     state.currentNote = state.notes[noteIndex];
 
     await saveData();
+
+    updateAllTags();
+    renderTags();
 
     if (!state.isSemanticSearching) {
         renderNotes(null, false);
@@ -1346,6 +1439,8 @@ async function deleteCurrentNote() {
     
     state.notes = state.notes.filter(n => n.id !== state.currentNote.id);
     await saveData();
+    updateAllTags();
+    renderTags();
     renderNotes();
     closeEditor();
     updateSaveStatus('Saved');
@@ -1472,4 +1567,66 @@ function handleLineHeightChange(e) {
     elements.lineHeightValue.textContent = parseFloat(height).toFixed(1);
     applyTypography(userPreferences);
     saveTypography();
+}
+
+function handleTagInput(e) {
+    if (e.key === 'Enter' || e.key === ',') {
+        e.preventDefault();
+        const tagValue = elements.noteTagInput.value.trim().replace(/,/g, '');
+        if (tagValue) {
+            addTagToNote(tagValue);
+            elements.noteTagInput.value = '';
+        }
+    }
+}
+
+function addTagToNote(tag) {
+    const existingTags = Array.from(elements.noteTagsContainer.querySelectorAll('.tag-pill')).map(p => p.firstChild.textContent);
+    if (existingTags.includes(tag)) {
+        elements.noteTagInput.value = '';
+        return;
+    }
+
+    const tagPill = document.createElement('span');
+    tagPill.className = 'tag-pill';
+    tagPill.textContent = tag;
+
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'tag-pill-remove';
+    removeBtn.innerHTML = '&times;';
+    removeBtn.title = `Remove tag ${tag}`;
+    removeBtn.onclick = () => {
+        tagPill.remove();
+        setDirtyState(true);
+        debouncedSave();
+    };
+
+    tagPill.appendChild(removeBtn);
+    elements.noteTagsContainer.appendChild(tagPill);
+    setDirtyState(true);
+    debouncedSave();
+}
+
+function renderNoteTags() {
+    elements.noteTagsContainer.innerHTML = '';
+    if (state.currentNote && state.currentNote.tags) {
+        state.currentNote.tags.forEach(tag => {
+            const tagPill = document.createElement('span');
+            tagPill.className = 'tag-pill';
+            tagPill.textContent = tag;
+
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'tag-pill-remove';
+            removeBtn.innerHTML = '&times;';
+            removeBtn.title = `Remove tag ${tag}`;
+            removeBtn.onclick = () => {
+                tagPill.remove();
+                setDirtyState(true);
+                debouncedSave();
+            };
+
+            tagPill.appendChild(removeBtn);
+            elements.noteTagsContainer.appendChild(tagPill);
+        });
+    }
 }

@@ -92,6 +92,9 @@
                     </button>
                 </div>
                 <div id="folderList" class="folder-list desktop-only"></div>
+                
+                <h2 class="desktop-only sidebar-subtitle">Tags</h2>
+                <div id="tagList" class="tag-list desktop-only"></div>
             </aside>
 
             <main class="notes-area">
@@ -123,6 +126,10 @@
             <aside class="editor-panel" id="editorPanel">
                 <div class="editor-header">
                     <input type="text" id="noteTitle" placeholder="Untitled Note">
+                </div>
+                <div id="noteTagsContainer" class="editor-tags-container">
+                    <div id="tags-input-area"></div>
+                    <input type="text" id="noteTagInput" placeholder="Add a tag and press Enter...">
                 </div>
                 <div class="editor-toolbar">
                     <div class="toolbar-group">

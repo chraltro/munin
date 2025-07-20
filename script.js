@@ -1947,8 +1947,28 @@ function loadTheme() {
 
 function renderThemeSwitchers() {
     elements.themeModalGrid.innerHTML = '';
+
+    const dummy = document.createElement('div');
+    dummy.style.position = 'absolute';
+    dummy.style.visibility = 'hidden';
+    document.body.appendChild(dummy);
+
     THEMES.forEach(theme => {
-        const gradientCss = `linear-gradient(135deg, ${theme.gradient[0]}, ${theme.gradient[1]})`;
+        dummy.className = theme.className;
+        const style = getComputedStyle(dummy);
+        const bgPrimary = style.getPropertyValue('--bg-primary').trim();
+        const bgSecondary = style.getPropertyValue('--bg-secondary').trim();
+        const primary = style.getPropertyValue('--primary').trim();
+        const textPrimary = style.getPropertyValue('--text-primary').trim();
+        const borderLight = style.getPropertyValue('--border-light').trim();
+
+        const gradientCss = `conic-gradient(
+            ${bgPrimary} 0deg 144deg,
+            ${bgSecondary} 144deg 216deg,
+            ${primary} 216deg 288deg,
+            ${textPrimary} 288deg 360deg
+        )`;
+
         const card = document.createElement('div');
         card.className = 'theme-card';
         card.title = theme.name;
@@ -1956,9 +1976,11 @@ function renderThemeSwitchers() {
             applyTheme(theme.className);
             elements.themeModal.style.display = 'none';
         };
-        card.innerHTML = `<div class="theme-card-swatch" style="background-image: ${gradientCss}; aspect-ratio: 1 / 1;"></div>`;
+        card.innerHTML = `<div class="theme-card-swatch" style="background-image: ${gradientCss}; border-color: ${borderLight};"></div>`;
         elements.themeModalGrid.appendChild(card);
     });
+
+    document.body.removeChild(dummy);
 }
 
 function applyTypography(prefs) {

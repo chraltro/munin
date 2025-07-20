@@ -1309,30 +1309,28 @@ function renderTags() {
         elements.tagList.appendChild(tagEl);
     });
 
-    // Defer the height check to allow for rendering, then add button if needed
-    setTimeout(() => {
-        const MAX_HEIGHT_BEFORE_COLLAPSE = 280; // Corresponds to approx. 10 rows
+    // Check height and add button if needed. This is done synchronously to prevent layout shifts.
+    const MAX_HEIGHT_BEFORE_COLLAPSE = 280; // Corresponds to approx. 10 rows
+    
+    // Use scrollHeight to get the full potential height regardless of current collapsed state
+    if (elements.tagList.scrollHeight > MAX_HEIGHT_BEFORE_COLLAPSE) {
+        elements.tagList.classList.toggle('is-collapsed', !state.isTagListExpanded);
         
-        // Use scrollHeight to get the full potential height regardless of current collapsed state
-        if (elements.tagList.scrollHeight > MAX_HEIGHT_BEFORE_COLLAPSE) {
-            elements.tagList.classList.toggle('is-collapsed', !state.isTagListExpanded);
-            
-            const showMoreBtn = document.createElement('button');
-            showMoreBtn.className = 'show-more-tags-btn';
-            showMoreBtn.textContent = state.isTagListExpanded ? 'Show Fewer Tags' : 'Show All Tags';
+        const showMoreBtn = document.createElement('button');
+        showMoreBtn.className = 'show-more-tags-btn';
+        showMoreBtn.textContent = state.isTagListExpanded ? 'Show Fewer Tags' : 'Show All Tags';
 
-            showMoreBtn.onclick = () => {
-                state.isTagListExpanded = !state.isTagListExpanded;
-                elements.tagList.classList.toggle('is-collapsed', !state.isTagListExpanded);
-                showMoreBtn.textContent = state.isTagListExpanded ? 'Show Fewer Tags' : 'Show All Tags';
-            };
-            elements.tagListContainer.appendChild(showMoreBtn);
-        } else {
-            // Not overflowing, so ensure it's expanded and reset state
-            elements.tagList.classList.remove('is-collapsed');
-            state.isTagListExpanded = false;
-        }
-    }, 50);
+        showMoreBtn.onclick = () => {
+            state.isTagListExpanded = !state.isTagListExpanded;
+            elements.tagList.classList.toggle('is-collapsed', !state.isTagListExpanded);
+            showMoreBtn.textContent = state.isTagListExpanded ? 'Show Fewer Tags' : 'Show All Tags';
+        };
+        elements.tagListContainer.appendChild(showMoreBtn);
+    } else {
+        // Not overflowing, so ensure it's expanded and reset state
+        elements.tagList.classList.remove('is-collapsed');
+        state.isTagListExpanded = false;
+    }
 }
 
 async function createNewFolder() {

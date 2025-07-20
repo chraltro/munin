@@ -691,6 +691,7 @@ Now, analyze all the provided data and return the single JSON object for the cor
         
         await executeAITool(tool, args);
         elements.commandInput.value = '';
+        autoResizeCommandInput();
 
     } catch (error) {
         console.error('Full error object:', error);

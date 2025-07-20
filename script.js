@@ -1474,7 +1474,8 @@ function openNote(note) {
             title: elements.noteTitle.value,
             content: elements.noteEditor.value,
             tags: Array.from(elements.noteTagsContainer.querySelectorAll('.tag-pill'))
-                .map(pill => pill.firstChild.textContent)
+                .map(pill => pill.firstChild.textContent),
+            servings: state.currentNote.servings
         };
         performBackgroundSave(noteToSave);
     }
@@ -1517,7 +1518,8 @@ function closeEditor() {
             title: elements.noteTitle.value,
             content: elements.noteEditor.value,
             tags: Array.from(elements.noteTagsContainer.querySelectorAll('.tag-pill'))
-                .map(pill => pill.firstChild.textContent)
+                .map(pill => pill.firstChild.textContent),
+            servings: state.currentNote.servings
         };
         performBackgroundSave(noteToSave);
     }
@@ -1578,6 +1580,7 @@ async function performBackgroundSave(note) {
     state.notes[noteIndex].title = note.title;
     state.notes[noteIndex].content = note.content;
     state.notes[noteIndex].tags = note.tags;
+    state.notes[noteIndex].servings = note.servings;
     state.notes[noteIndex].modified = new Date().toISOString();
 
     console.log("Regenerating embedding in background for note:", note.id);
@@ -1614,6 +1617,7 @@ async function saveCurrentNote(regenerateEmbedding = false) {
     state.notes[noteIndex].content = newContent;
     state.notes[noteIndex].tags = newTags;
     state.notes[noteIndex].modified = new Date().toISOString();
+    state.notes[noteIndex].servings = state.currentNote.servings;
 
     if (regenerateEmbedding) {
         console.log("Regenerating embedding on explicit save...");

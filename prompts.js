@@ -53,7 +53,7 @@ TOOL-USE INSTRUCTIONS:
 3. tool: "UPDATE_NOTE"
    - Use this to modify an existing note based on the 'Relevant Existing Notes'.
    - **CRITICAL**: The 'newContent' you generate MUST be the complete, well-formatted markdown for the entire note.
-   - If you are updating a **RECIPE**, ensure the updated content still follows the recipe template structure and that all ingredient lines start with a quantity for scaling.
+   - If you are updating a **RECIPE**, ensure the updated content still follows the recipe template structure and that all ingredient lines start with a quantity for scaling. **Do NOT include a 'Servings' line in the markdown content itself.**
    - args: { "targetTitle": "Full Title of Note to Update", "newTitle": "Updated Title", "newContent": "Full new content...", "newTags": ["updated", "tags"] }
 
 4. tool: "DELETE_NOTE"

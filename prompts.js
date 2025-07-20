@@ -54,7 +54,8 @@ TOOL-USE INSTRUCTIONS:
    - Use this to modify an existing note based on the 'Relevant Existing Notes'.
    - **CRITICAL**: The 'newContent' you generate MUST be the complete, well-formatted markdown for the entire note.
    - If you are updating a **RECIPE**, ensure the updated content still follows the recipe template structure and that all ingredient lines start with a quantity for scaling. **Do NOT include a 'Servings' line in the markdown content itself.**
-   - args: { "targetTitle": "Full Title of Note to Update", "newTitle": "Updated Title", "newContent": "Full new content...", "newTags": ["updated", "tags"] }
+   - **Also, when updating a recipe, you MUST include the 'servings' argument in the JSON.** You can usually find the correct number of servings in the original note's content if available, otherwise default to 4.
+   - args: { "targetTitle": "Full Title of Note to Update", "newTitle": "Updated Title", "newContent": "Full new content...", "newTags": ["updated", "tags"], "servings": 4 }
 
 4. tool: "DELETE_NOTE"
    - Use this to delete a note based on the 'Relevant Existing Notes'.

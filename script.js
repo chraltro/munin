@@ -1081,7 +1081,11 @@ function selectTag(tag) {
         state.activeTags = [];
         state.currentFolder = 'All Notes';
     } else {
-        if (!state.activeTags.includes(tag)) {
+        if (state.activeTags.includes(tag)) {
+            // If tag is already active, remove it to un-select.
+            state.activeTags = state.activeTags.filter(t => t !== tag);
+        } else {
+            // Otherwise, add the tag to the active filters.
             state.activeTags.push(tag);
         }
         state.currentFolder = 'All Notes'; // Filtering by tag implies all folders.
@@ -1140,11 +1144,13 @@ function updateNotesHeader() {
 
 function updateAllTags() {
     const allTags = new Set();
-    state.notes.forEach(note => {
-        if (note.tags) {
-            note.tags.forEach(tag => allTags.add(tag));
-        }
-    });
+    state.notes
+        .filter(note => note.folder !== APP_CONFIG.templateFolder)
+        .forEach(note => {
+            if (note.tags) {
+                note.tags.forEach(tag => allTags.add(tag));
+            }
+        });
     state.allTags = Array.from(allTags).sort((a, b) => a.localeCompare(b));
 }
 

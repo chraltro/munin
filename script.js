@@ -309,94 +309,81 @@ async function processCommand() {
     if (!command) return;
 
     showLoading(true);
-    let rawResponseForDebugging = ''; 
+    let rawResponseForDebugging = '';
 
     try {
-        const intentPrompt = `You are a strict command interpreter. Your ONLY job is to classify the user's text into one of four categories: "CREATE", "UPDATE", "DELETE", or "QUERY".
-- Analyze the user's text to determine the intent.
+        let contextNote = null;
+        let contextText = '';
+
+        if (state.notes.length > 0) {
+            showLoading(true, 'Finding context...');
+            const relevancePrompt = `Given the user's command, which of the following note titles is the most relevant for providing context? Respond with ONLY the single, exact title in a JSON format like {"title": "The Note Title"} or {"title": null} if no note is relevant.\n\nUser Command: "${command}"\n\nNote Titles: ${JSON.stringify(state.notes.map(n => n.title))}`;
+            try {
+                const relevanceResult = await callGeminiAPI(relevancePrompt, { temperature: 0.0, maxOutputTokens: 200 });
+                if (relevanceResult.candidates && relevanceResult.candidates[0].content) {
+                    const relevanceText = relevanceResult.candidates[0].content.parts[0].text;
+                    const relevanceMatch = relevanceText.match(/\{[\s\S]*\}/);
+                    if (relevanceMatch) {
+                        const { title: relevantNoteTitle } = JSON.parse(relevanceMatch[0]);
+                        if (relevantNoteTitle) {
+                            contextNote = state.notes.find(n => n.title === relevantNoteTitle);
+                            if (contextNote) {
+                                console.log('Context found for command:', contextNote.title);
+                                contextText = `\n\nFor additional context, here is the content of the most relevant existing note:\n---CONTEXT NOTE---\nTitle: ${contextNote.title}\nContent: ${contextNote.content}\n---END CONTEXT NOTE---`;
+                            }
+                        }
+                    }
+                }
+            } catch (relevanceError) {
+                console.warn("Could not determine relevance, proceeding without context.", relevanceError);
+            }
+        }
+        
+        showLoading(true, 'Determining intent...');
+        const intentPrompt = `You are a strict command interpreter. Based on the user's command and any provided note context, determine the correct intent from this list: "CREATE", "UPDATE", "DELETE", or "QUERY".
+- If the command is to make something new (like a grocery list from a recipe), the intent is "CREATE".
+- If the command is to change an existing note, the intent is "UPDATE".
+- If the command is to remove a note, the intent is "DELETE".
+- If the command is a question asking for information, the intent is "QUERY".
 - You MUST respond with ONLY a single, valid JSON object and nothing else.
-- If the text is a command to manage notes, use the appropriate intent and find the "targetTitle" from the list if possible.
-- If the text is a question or a request for information, the intent is "QUERY".
-- If the intent is unclear or it's just a statement, you MUST default to "intent": "QUERY". Do not use "UNKNOWN".
 
 User Command: "${command}"
-Existing Note Titles: ${JSON.stringify(state.notes.map(n => n.title))}
+${contextText}
 
-Examples:
-- User: "delete my cookie recipe" -> {"intent": "DELETE", "targetTitle": "Chocolate Chip Cookie Recipe"}
-- User: "new idea for a cat-based dating app" -> {"intent": "CREATE", "targetTitle": null}
-- User: "what is the capital of France?" -> {"intent": "QUERY", "targetTitle": null}
-- User: "do the pancakes need baking powder?" -> {"intent": "QUERY", "targetTitle": null}
-`;
+Respond with {"intent": "YourChoice", "targetTitle": "The Full Title of the Note to Act On"}.
+For CREATE, "targetTitle" can be null. For UPDATE/DELETE, "targetTitle" should be the title of the context note if provided.`;
         const intentResult = await callGeminiAPI(intentPrompt, { temperature: 0.0, maxOutputTokens: 2048 });
 
-        if (!intentResult.candidates || intentResult.candidates.length === 0) {
-            console.error("FATAL: AI response contained no candidates. Full API Response:", intentResult);
-            throw new Error("AI response was empty or invalid. Check console for the full API response object.");
+        if (!intentResult.candidates || !intentResult.candidates.length === 0) {
+            console.error("FATAL: AI response for intent contained no candidates. Full API Response:", intentResult);
+            throw new Error("AI response was empty or invalid. Check console.");
         }
-
         const intentCandidate = intentResult.candidates[0];
         if (!intentCandidate.content || !intentCandidate.content.parts) {
-            console.error("FATAL: AI candidate is missing content. This is likely due to a safety filter. Full Candidate Object:", intentCandidate);
+            console.error("FATAL: AI candidate for intent is missing content. Full Candidate Object:", intentCandidate);
             const reason = intentCandidate.finishReason || "UNKNOWN";
-            throw new Error(`AI did not return valid content. Reason: ${reason}. Check console for the full candidate object.`);
+            throw new Error(`AI did not return valid content for intent. Reason: ${reason}. Check console.`);
         }
-
-        const intentText = intentCandidate.content.parts[0].text;
-        rawResponseForDebugging = intentText;
-
-        const intentJsonMatch = intentText.match(/\{[\s\S]*\}/);
+        const intentTextResponse = intentCandidate.content.parts[0].text;
+        rawResponseForDebugging = intentTextResponse;
+        const intentJsonMatch = intentTextResponse.match(/\{[\s\S]*\}/);
         if (!intentJsonMatch) {
-            console.error("FATAL: Could not find a JSON object in the AI's response. Raw AI response text was:", `\n---START---\n${rawResponseForDebugging}\n---END---`);
-            throw new Error("AI did not respond with a valid JSON object for intent detection. Check console for its raw response.");
+            console.error("FATAL: Could not find JSON in AI's intent response. Raw response was:", `\n---START---\n${rawResponseForDebugging}\n---END---`);
+            throw new Error("AI did not respond with valid JSON for intent. Check console.");
         }
         const { intent, targetTitle } = JSON.parse(intentJsonMatch[0]);
-
         console.log(`Intent Detected: ${intent}`, `Target: ${targetTitle || 'N/A'}`);
+
         let shouldSave = false;
 
         switch (intent) {
             case 'QUERY': {
-                showLoading(true, 'Analyzing context...');
-                
-                // Step 1: Find the most relevant note to provide context.
-                let contextText = '';
-                const relevancePrompt = `Given the user's question, which of the following note titles is the most relevant? Respond with ONLY the single, exact title in a JSON format like {"title": "The Note Title"} or {"title": null} if no note is relevant.\n\nUser Question: "${command}"\n\nNote Titles: ${JSON.stringify(state.notes.map(n => n.title))}`;
-                try {
-                    const relevanceResult = await callGeminiAPI(relevancePrompt, { temperature: 0.0, maxOutputTokens: 200 });
-                    if (relevanceResult.candidates && relevanceResult.candidates[0].content) {
-                        const relevanceText = relevanceResult.candidates[0].content.parts[0].text;
-                        const relevanceMatch = relevanceText.match(/\{[\s\S]*\}/);
-                        if (relevanceMatch) {
-                            const { title: relevantNoteTitle } = JSON.parse(relevanceMatch[0]);
-                            if (relevantNoteTitle) {
-                                const relevantNote = state.notes.find(n => n.title === relevantNoteTitle);
-                                if (relevantNote) {
-                                    console.log('Context found for query:', relevantNote.title);
-                                    contextText = `\n\nUse the following note as the primary source of truth to answer the question. Do not use your general knowledge unless the note does not contain the answer.\n---NOTE CONTEXT---\nTitle: ${relevantNote.title}\n\nContent:\n${relevantNote.content}\n---END NOTE CONTEXT---`;
-                                }
-                            }
-                        }
-                    }
-                } catch (relevanceError) {
-                    console.warn("Could not determine relevance, proceeding without context.", relevanceError);
-                }
-                
-                // Step 2: Answer the question with the found context (if any).
                 showLoading(true, 'Finding an answer...');
                 const queryPrompt = `You are a helpful assistant. Provide a clear and concise answer to the following question. Format the response in Markdown.${contextText}\n\nQuestion: "${command}"`;
                 const mainResult = await callGeminiAPI(queryPrompt, { temperature: 0.5, maxOutputTokens: 8192 });
 
-                if (!mainResult.candidates || mainResult.candidates.length === 0) {
-                    throw new Error("AI failed to provide an answer.");
-                }
-                const queryCandidate = mainResult.candidates[0];
-                if (!queryCandidate.content || !queryCandidate.content.parts) {
-                    console.error("AI response for query is missing content. It was likely blocked.", queryCandidate);
-                    const reason = queryCandidate.finishReason || "UNKNOWN";
-                    throw new Error(`AI did not return an answer. Reason: ${reason}. This may be due to safety filters.`);
-                }
-                const answerText = queryCandidate.content.parts[0].text;
+                if (!mainResult.candidates || !mainResult.candidates[0].content) throw new Error("AI failed to provide an answer.");
+                const answerText = mainResult.candidates[0].content.parts[0].text;
 
                 aiResponseOutput.innerHTML = DOMPurify.sanitize(marked.parse(answerText));
                 aiResponseModal.style.display = 'flex';
@@ -404,29 +391,18 @@ Examples:
             }
             case 'UPDATE': {
                 const noteToUpdate = state.notes.find(n => n.title === targetTitle);
-                if (!noteToUpdate) {
-                    throw new Error(`Could not find a note titled "${targetTitle}" to update.`);
-                }
+                if (!noteToUpdate) throw new Error(`Could not find a note titled "${targetTitle}" to update.`);
                 showLoading(true, 'Updating note...');
-                const updatePrompt = `You are an AI note editor. Update the following note based on the user's command. Respond with ONLY a single JSON object containing the full, updated "title" and "content".\n\nUser Command: "${command}"\n\nOriginal Note:\n---\n${JSON.stringify({ title: noteToUpdate.title, content: noteToUpdate.content })}\n---`;
+                const updatePrompt = `You are an AI note editor. Update the note titled "${noteToUpdate.title}" based on the user's command. Respond with ONLY a single JSON object containing the full, updated "title" and "content".\n\nUser Command: "${command}"\n\nOriginal Note Content:\n---\n${noteToUpdate.content}\n---`;
                 const mainResult = await callGeminiAPI(updatePrompt, { temperature: 0.5, maxOutputTokens: 8192 });
 
-                if (!mainResult.candidates || !mainResult.candidates.length === 0) throw new Error("AI response for note update is empty or invalid.");
-                const candidate = mainResult.candidates[0];
-                if (!candidate.content || !candidate.content.parts) {
-                    console.error("AI response for update is missing content. It was likely blocked.", candidate);
-                    const reason = candidate.finishReason || "UNKNOWN";
-                    throw new Error(`AI did not return valid content for the update. Reason: ${reason}.`);
-                }
-                const mainText = candidate.content.parts[0].text;
+                if (!mainResult.candidates || !mainResult.candidates[0].content) throw new Error("AI failed to provide update content.");
+                const mainText = mainResult.candidates[0].content.parts[0].text;
                 rawResponseForDebugging = mainText;
-
                 const payloadMatch = mainText.match(/\{[\s\S]*\}/);
-                if (!payloadMatch) {
-                    console.error("FATAL: Could not find a JSON object in the AI's update response. Raw AI response text was:", `\n---START---\n${rawResponseForDebugging}\n---END---`);
-                    throw new Error("AI did not respond with valid JSON for the note update. Check console for its raw response.");
-                }
+                if (!payloadMatch) throw new Error("AI did not respond with valid JSON for the note update. Check console.");
                 const payload = JSON.parse(payloadMatch[0]);
+
                 const noteIndex = state.notes.findIndex(n => n.id === noteToUpdate.id);
                 state.notes[noteIndex].title = payload.title || noteToUpdate.title;
                 state.notes[noteIndex].content = payload.content;
@@ -447,30 +423,34 @@ Examples:
             }
             case 'CREATE': {
                 showLoading(true, 'Creating note...');
-                const createPrompt = `Process a user command to create a new note. Respond with ONLY a single, valid JSON object with "title", "content", and "folder". Choose the folder from this list: ${JSON.stringify(state.folders)}\n\nUser Command: "${command}"`;
+                const createPrompt = `You are an AI assistant. Your task is to create a new note based on the user's command.
+- Crucially, if the command requires information from an existing note, I have provided that note's content as context below. Use it to fulfill the command (e.g., creating a grocery list from a recipe).
+- If the command is for a brand new, unrelated topic, ignore the context and create the note from scratch.
+- Choose the most appropriate folder for the new note from this list: ${JSON.stringify(state.folders)}.
+
+User Command: "${command}"
+${contextText}
+
+Respond with ONLY a single, valid JSON object with "title", "content", and "folder".`;
                 const mainResult = await callGeminiAPI(createPrompt, { temperature: 0.7, maxOutputTokens: 8192 });
 
-                if (!mainResult.candidates || mainResult.candidates.length === 0) throw new Error("AI response for note creation is empty or invalid.");
-                const candidate = mainResult.candidates[0];
-                if (!candidate.content || !candidate.content.parts) {
-                    console.error("AI response for create is missing content. It was likely blocked.", candidate);
-                    const reason = candidate.finishReason || "UNKNOWN";
-                    throw new Error(`AI did not return valid content for the new note. Reason: ${reason}.`);
-                }
-                const mainText = candidate.content.parts[0].text;
+                if (!mainResult.candidates || !mainResult.candidates[0].content) throw new Error("AI failed to provide creation content.");
+                const mainText = mainResult.candidates[0].content.parts[0].text;
                 rawResponseForDebugging = mainText;
-
                 const payloadMatch = mainText.match(/\{[\s\S]*\}/);
-                if (!payloadMatch) {
-                    console.error("FATAL: Could not find a JSON object in the AI's create response. Raw AI response text was:", `\n---START---\n${rawResponseForDebugging}\n---END---`);
-                    throw new Error("AI did not respond with valid JSON for the new note. Check console for its raw response.");
-                }
+                if (!payloadMatch) throw new Error("AI did not respond with valid JSON for the new note. Check console.");
                 const payload = JSON.parse(payloadMatch[0]);
+
+                if (payload.folder && !state.folders.includes(payload.folder)) {
+                    state.folders.push(payload.folder);
+                    renderFolders();
+                }
+
                 const newNote = {
                     id: Date.now(),
                     title: payload.title,
                     content: payload.content,
-                    folder: payload.folder,
+                    folder: payload.folder || 'Personal',
                     created: new Date().toISOString(),
                     modified: new Date().toISOString()
                 };
@@ -492,6 +472,9 @@ Examples:
 
     } catch (error) {
         console.error('Full error object:', error);
+        if (rawResponseForDebugging) {
+            console.error("The AI's last raw response before the error was:", `\n---START---\n${rawResponseForDebugging}\n---END---`);
+        }
         alert(`An error occurred: ${error.message}\n\nPlease check the browser console (F12) for detailed logs.`);
     } finally {
         showLoading(false);

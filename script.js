@@ -2092,7 +2092,15 @@ function renderNoteTags() {
 function toggleAiActionsMenu(e) {
     e.preventDefault(); // Prevent editor from losing focus, which would clear selection
     e.stopPropagation();
-    elements.aiActionsContainer.classList.toggle('is-open');
+    const isOpen = elements.aiActionsContainer.classList.toggle('is-open');
+
+    if (isOpen) {
+        // Position menu below the button
+        const menu = elements.aiActionsMenu;
+        const btn = elements.aiActionsBtn;
+        menu.style.top = `${btn.offsetHeight}px`;
+        menu.style.bottom = 'auto';
+    }
 }
 
 function populateAiActionsMenu() {
@@ -2217,7 +2225,7 @@ async function performContextualAIAction(action, tone) {
             const noteIsRecipe = state.currentNote && state.currentNote.folder === 'Recipes';
             if (noteIsRecipe) {
                 const recipeTemplate = getTemplates().find(t => t.title === 'Recipe Template');
-                prompt = `You are a text formatting expert. Clean up the following user-provided text to match the provided Markdown recipe template. Retain all original information, just reformat it. Text to clean up:\n\n---\n${selectedText}\n\n---\nTemplate to match:\n${recipeTemplate.content}`;
+                prompt = `You are a text formatting expert. Clean up the following user-provided recipe text to match the provided Markdown recipe template. It is crucial that you include the 'Servings' metadata from the template, inferring a sensible value if it's missing from the user's text. Retain all original information, just reformat it. Text to clean up:\n\n---\n${selectedText}\n\n---\nTemplate to match:\n${recipeTemplate.content}`;
             } else {
                  prompt = `Clean up and format the following text using Markdown best practices (headings, lists, bolding, etc.) to improve its readability. Only return the improved text, without any explanation or preamble:\n\n---\n${selectedText}`;
             }

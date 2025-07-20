@@ -786,7 +786,6 @@ body {
 
 #noteEditor:focus {
     outline: none;
-    background: rgba(15, 23, 42, 0.8);
 }
 
 .note-preview {
@@ -1235,6 +1234,30 @@ body {
 .mobile-only { display: none; }
 
 @media (max-width: 768px) {
+    body {
+        height: auto;
+        overflow-y: auto;
+    }
+
+    .app-container {
+        height: auto;
+        min-height: 100vh;
+    }
+
+    .main-content {
+        overflow: visible;
+    }
+
+    .notes-area {
+        overflow: visible;
+        flex: none;
+    }
+
+    .notes-container {
+        overflow: visible;
+        padding-bottom: 8rem;
+    }
+
     .desktop-only { display: none !important; }
     .mobile-only { display: block !important; }
 
@@ -1256,6 +1279,10 @@ body {
         border-right: none;
         border-bottom: 1px solid var(--border);
         flex-shrink: 0;
+        position: -webkit-sticky;
+        position: sticky;
+        top: 0;
+        z-index: 9;
     }
     
     .sidebar-header {
@@ -1284,13 +1311,7 @@ body {
     }
     
     .notes-area {
-        flex: 1;
         position: relative;
-    }
-
-    .notes-container {
-        padding: 1rem;
-        padding-bottom: 6rem;
     }
 
     .notes-header {
@@ -1306,18 +1327,14 @@ body {
     .notes-header h2 {
         grid-area: title;
     }
-
+    
     .notes-header .search-container {
         grid-area: search;
         max-width: none;
     }
-
+    
     .notes-header #newNoteBtn {
         grid-area: button;
-    }
-
-    .search-container {
-        max-width: none;
     }
 
     .input-bar {

@@ -195,7 +195,7 @@ function setupEventListeners() {
     elements.noteEditor.addEventListener('input', handleNoteChange);
     elements.noteEditor.addEventListener('input', handleEditorAutocomplete);
     elements.noteEditor.addEventListener('keydown', handleEditorAutocompleteKeydown);
-    elements.aiActionsBtn.addEventListener('click', toggleAiActionsMenu);
+    elements.aiActionsBtn.addEventListener('mousedown', toggleAiActionsMenu);
     elements.aiActionsMenu.addEventListener('click', handleAiActionClick);
     elements.noteTagInput.addEventListener('keydown', handleTagInput);
     elements.currentFolderName.addEventListener('click', handleFolderNameClick);
@@ -2088,6 +2088,7 @@ function renderNoteTags() {
 // --- Contextual AI Menu Logic ---
 
 function toggleAiActionsMenu(e) {
+    e.preventDefault(); // Prevent editor from losing focus, which would clear selection
     e.stopPropagation();
     elements.aiActionsContainer.classList.toggle('is-open');
 }

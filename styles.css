@@ -1239,73 +1239,96 @@ body {
     margin-left: 0.5rem;
 }
 
-.contextual-menu {
-    position: absolute;
-    display: none;
-    background: var(--bg-quaternary);
-    border: 1px solid var(--border-light);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow-lg);
-    z-index: 1001;
-    padding: 0.25rem;
-    display: flex;
-    gap: 0.25rem;
-    flex-wrap: wrap;
+.toolbar-ai-actions {
+    position: relative;
 }
 
-.contextual-menu button {
-    background: var(--bg-tertiary);
+.toolbar-ai-actions > .toolbar-btn::after {
+    content: ' \f0d7';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    margin-left: 0.5em;
+    font-size: 0.9em;
+    transition: transform 0.2s ease-in-out;
+}
+
+.toolbar-ai-actions:hover > .toolbar-btn::after {
+    transform: rotate(180deg);
+}
+
+.toolbar-ai-actions-menu {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 5px);
+    right: 0;
+    background-color: var(--bg-tertiary);
+    min-width: 200px;
+    box-shadow: var(--shadow-lg);
+    z-index: 10;
+    border-radius: var(--radius);
+    padding: 0.5rem;
+    border: 1px solid var(--border-light);
+}
+
+.toolbar-ai-actions:hover .toolbar-ai-actions-menu {
+    display: block;
+}
+
+.toolbar-ai-actions-menu button {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    text-align: left;
+    background: none;
     border: none;
     color: var(--text-secondary);
-    padding: 0.5rem 0.75rem;
+    padding: 0.75rem 1rem;
     border-radius: var(--radius);
     cursor: pointer;
     transition: var(--transition-fast);
-    white-space: nowrap;
-    font-size: 0.8rem;
+    font-size: 0.875rem;
     font-weight: 500;
 }
 
-.contextual-menu button:hover {
+.toolbar-ai-actions-menu button:hover {
     background: var(--primary);
     color: white;
 }
 
-.contextual-menu .menu-separator {
-    width: 1px;
+.toolbar-ai-actions-menu .menu-separator {
+    height: 1px;
     background-color: var(--border-light);
-    margin: 0.25rem 0;
+    margin: 0.5rem 0;
 }
 
-.contextual-menu-dropdown {
+.toolbar-ai-actions-menu .nested-dropdown {
     position: relative;
 }
 
-.contextual-menu-dropdown > button::after {
-    content: ' \f0d7'; /* FontAwesome chevron-down */
+.toolbar-ai-actions-menu .nested-dropdown > button::after {
+    content: '\f0da';
     font-family: 'Font Awesome 6 Free';
     font-weight: 900;
-    margin-left: 0.5em;
 }
 
-.contextual-menu-dropdown-content {
+.toolbar-ai-actions-menu .nested-dropdown-content {
     display: none;
     position: absolute;
-    bottom: calc(100% + 5px);
-    left: 0;
-    background-color: var(--bg-quaternary);
-    min-width: 100%;
+    top: -0.5rem;
+    right: 100%;
+    margin-right: 5px;
+    background-color: var(--bg-tertiary);
+    min-width: 160px;
     box-shadow: var(--shadow-lg);
-    z-index: 1;
+    z-index: 11;
     border-radius: var(--radius);
-    padding: 0.25rem;
+    padding: 0.5rem;
     border: 1px solid var(--border-light);
-    flex-direction: column;
-    gap: 0.25rem;
 }
 
-.contextual-menu-dropdown:hover .contextual-menu-dropdown-content {
-    display: flex;
+.toolbar-ai-actions-menu .nested-dropdown:hover .nested-dropdown-content {
+    display: block;
 }
 
 .template-list-modal {

@@ -167,6 +167,14 @@
                         <button id="servingsIncrement" class="toolbar-btn" title="Increase">+</button>
                     </div>
                     <div class="toolbar-group">
+                        <div id="aiActionsContainer" class="toolbar-ai-actions">
+                            <button id="aiActionsBtn" class="toolbar-btn" title="AI Actions" disabled>
+                                <i class="fas fa-magic"></i>
+                            </button>
+                            <div id="aiActionsMenu" class="toolbar-ai-actions-menu">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
                         <button id="saveNoteBtn" class="toolbar-btn primary">
                             <i class="fas fa-save"></i>
                             <span>Save</span>
@@ -179,9 +187,6 @@
                 </div>
                 <textarea id="noteEditor" placeholder="Write your note in Markdown..."></textarea>
                 <div id="autocompleteContainer" class="autocomplete-container"></div>
-                <div id="contextualMenu" class="contextual-menu">
-                    <!-- Actions will be populated by JS -->
-                </div>
                 <div id="notePreview" class="note-preview"></div>
                 <button id="closeEditorBtn" class="icon-btn" title="Close Editor">
                     <i class="fas fa-times"></i>

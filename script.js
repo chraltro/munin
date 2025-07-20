@@ -58,7 +58,9 @@ const elements = {
     noteTagInput: document.getElementById('noteTagInput'),
     noteEditor: document.getElementById('noteEditor'),
     autocompleteContainer: document.getElementById('autocompleteContainer'),
-    contextualMenu: document.getElementById('contextualMenu'),
+    aiActionsContainer: document.getElementById('aiActionsContainer'),
+    aiActionsBtn: document.getElementById('aiActionsBtn'),
+    aiActionsMenu: document.getElementById('aiActionsMenu'),
     notePreview: document.getElementById('notePreview'),
     editModeBtn: document.getElementById('editModeBtn'),
     previewModeBtn: document.getElementById('previewModeBtn'),
@@ -193,8 +195,7 @@ function setupEventListeners() {
     elements.noteEditor.addEventListener('input', handleNoteChange);
     elements.noteEditor.addEventListener('input', handleEditorAutocomplete);
     elements.noteEditor.addEventListener('keydown', handleEditorAutocompleteKeydown);
-    elements.noteEditor.addEventListener('mouseup', handleEditorMouseUp);
-    elements.contextualMenu.addEventListener('click', handleContextualMenuClick);
+    elements.aiActionsMenu.addEventListener('click', handleAiActionClick);
     elements.noteTagInput.addEventListener('keydown', handleTagInput);
     elements.currentFolderName.addEventListener('click', handleFolderNameClick);
     elements.notePreview.addEventListener('change', handleCheckboxChangeInPreview);
@@ -208,14 +209,7 @@ function setupEventListeners() {
         }
     });
 
-    // Hide contextual menu on mouseup if selection is lost
-    document.addEventListener('mouseup', (e) => {
-        // This global handler should hide the menu if a click occurs anywhere
-        // outside of the menu itself or the editor. The editor has its own logic.
-        if (!e.target.closest('.contextual-menu') && e.target !== elements.noteEditor) {
-            elements.contextualMenu.style.display = 'none';
-        }
-    });
+    document.addEventListener('selectionchange', handleSelectionChange);
 }
 
 function setupModalEventListeners() {
@@ -1545,6 +1539,7 @@ function openNote(note) {
 
     elements.editorPanel.classList.add('is-open');
     setEditorMode('preview');
+    populateAiActionsMenu();
     
     if (window.innerWidth <= 768) {
         elements.toggleHeaderBtn.style.display = 'flex';
@@ -2088,14 +2083,14 @@ function renderNoteTags() {
 
 // --- Contextual AI Menu Logic ---
 
-function populateContextualMenu() {
-    elements.contextualMenu.innerHTML = `
+function populateAiActionsMenu() {
+    elements.aiActionsMenu.innerHTML = `
         <button data-action="summarize" title="Summarize the selected text">Summarize</button>
         <button data-action="expand" title="Expand on the selected text">Expand</button>
         <button data-action="fix" title="Fix spelling and grammar">Fix Grammar</button>
-        <div class="contextual-menu-dropdown">
+        <div class="nested-dropdown">
             <button>Change Tone</button>
-            <div class="contextual-menu-dropdown-content">
+            <div class="nested-dropdown-content">
                 <button data-action="tone" data-tone="Professional">Professional</button>
                 <button data-action="tone" data-tone="Casual">Casual</button>
                 <button data-action="tone" data-tone="Friendly">Friendly</button>
@@ -2107,57 +2102,24 @@ function populateContextualMenu() {
     `;
 }
 
-function handleEditorMouseUp(e) {
-    // We use a small timeout to let the selection event finalize
-    setTimeout(() => {
-        const editor = elements.noteEditor;
-        const selectionText = editor.value.substring(editor.selectionStart, editor.selectionEnd);
-        const menu = elements.contextualMenu;
-
-        if (selectionText.trim().length > 10) { // Only show for reasonably long selections
-            populateContextualMenu();
-
-            const coords = getCaretCoordinates(editor, editor.selectionStart);
-            const editorPanelRect = elements.editorPanel.getBoundingClientRect();
-            
-            // Must be displayed to get offsetWidth
-            menu.style.display = 'flex';
-            
-            let top = coords.top - menu.offsetHeight - 10;
-            let left = coords.left;
-
-            // Boundary checks
-            if (top < 10) { // If it's too close to the top, move it below the selection
-                const endCoords = getCaretCoordinates(editor, editor.selectionEnd);
-                top = endCoords.top + coords.height + 10;
-            }
-
-            if (left < 10) {
-                left = 10;
-            }
-
-            if ((left + menu.offsetWidth) > editorPanelRect.width - 10) {
-                left = editorPanelRect.width - menu.offsetWidth - 10;
-            }
-
-            menu.style.top = `${top}px`;
-            menu.style.left = `${left}px`;
-        } else {
-            menu.style.display = 'none';
-        }
-    }, 50);
+function handleSelectionChange() {
+    if (document.activeElement !== elements.noteEditor) {
+        elements.aiActionsBtn.disabled = true;
+        return;
+    }
+    const selection = elements.noteEditor.value.substring(elements.noteEditor.selectionStart, elements.noteEditor.selectionEnd);
+    elements.aiActionsBtn.disabled = selection.trim().length < 10;
 }
 
-function handleContextualMenuClick(e) {
+function handleAiActionClick(e) {
     const button = e.target.closest('button');
-    if (!button) return;
+    if (!button || button.parentElement.classList.contains('nested-dropdown')) return;
 
     const action = button.dataset.action;
     const tone = button.dataset.tone;
 
     if (action) {
         performContextualAIAction(action, tone);
-        elements.contextualMenu.style.display = 'none';
     }
 }
 
@@ -2165,11 +2127,16 @@ function replaceSelectedText(replacement) {
     const editor = elements.noteEditor;
     const start = editor.selectionStart;
     const end = editor.selectionEnd;
-
-    // Manually update the value. This doesn't preserve undo history like the deprecated execCommand, but is more reliable.
-    editor.value = editor.value.substring(0, start) + replacement + editor.value.substring(end);
     
-    // Re-select the newly inserted text
+    editor.focus();
+    // This is the modern, correct way that preserves undo history
+    const success = document.execCommand('insertText', false, replacement);
+    
+    if (!success) {
+        // Fallback for older browsers or edge cases
+        editor.value = editor.value.substring(0, start) + replacement + editor.value.substring(end);
+    }
+    
     editor.selectionStart = start;
     editor.selectionEnd = start + replacement.length;
 

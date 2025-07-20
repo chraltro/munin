@@ -1814,7 +1814,7 @@ function renderThemeSwitchers() {
             applyTheme(theme.className);
             elements.themeModal.style.display = 'none';
         };
-        card.innerHTML = `<div class="theme-card-swatch" style="background-image: ${gradientCss};"></div>`;
+        card.innerHTML = `<div class="theme-card-swatch" style="background-image: ${gradientCss}; aspect-ratio: 1 / 1;"></div>`;
         elements.themeModalGrid.appendChild(card);
     });
 }

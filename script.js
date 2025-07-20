@@ -117,7 +117,11 @@ const elements = {
     fontSizeValue: document.getElementById('fontSizeValue'),
     lineHeightSlider: document.getElementById('lineHeightSlider'),
     lineHeightValue: document.getElementById('lineHeightValue'),
-    saveStatus: document.getElementById('saveStatus')
+    saveStatus: document.getElementById('saveStatus'),
+    recipeScaler: document.getElementById('recipeScaler'),
+    servingsInput: document.getElementById('servingsInput'),
+    servingsDecrement: document.getElementById('servingsDecrement'),
+    servingsIncrement: document.getElementById('servingsIncrement')
 };
 
 document.addEventListener('DOMContentLoaded', initializeApp);

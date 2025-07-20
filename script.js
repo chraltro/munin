@@ -24,6 +24,7 @@ let state = {
     isEmbeddingStale: false,
     originalNoteContent: '',
     isSemanticSearching: false,
+    noteViewMode: 'card',
     saveTimeout: null,
     currentServings: null,
     baseServings: null,
@@ -95,7 +96,9 @@ const elements = {
     recipeScaler: document.getElementById('recipeScaler'),
     servingsInput: document.getElementById('servingsInput'),
     servingsDecrement: document.getElementById('servingsDecrement'),
-    servingsIncrement: document.getElementById('servingsIncrement')
+    servingsIncrement: document.getElementById('servingsIncrement'),
+    cardViewBtn: document.getElementById('cardViewBtn'),
+    listViewBtn: document.getElementById('listViewBtn')
 };
 
 document.addEventListener('DOMContentLoaded', initializeApp);
@@ -104,8 +107,20 @@ async function initializeApp() {
     checkSecurityWarning();
     loadTheme();
     loadTypography();
+    loadViewMode();
     await checkAutoLogin();
     setupEventListeners();
+}
+
+function saveViewMode() {
+    localStorage.setItem('chrisidian_noteViewMode', state.noteViewMode);
+}
+
+function loadViewMode() {
+    const savedMode = localStorage.getItem('chrisidian_noteViewMode');
+    if (savedMode) {
+        state.noteViewMode = savedMode;
+    }
 }
 
 function checkSecurityWarning() {
@@ -204,6 +219,9 @@ function setupEventListeners() {
     elements.noteTagInput.addEventListener('keydown', handleTagInput);
     elements.currentFolderName.addEventListener('click', handleFolderNameClick);
     elements.notePreview.addEventListener('change', handleCheckboxChangeInPreview);
+
+    elements.cardViewBtn.addEventListener('click', () => setViewMode('card'));
+    elements.listViewBtn.addEventListener('click', () => setViewMode('list'));
 
     setupModalEventListeners();
     setupNoteLinkHandlers();
@@ -358,7 +376,27 @@ function showMainApp() {
     renderTags();
     renderThemeSwitchers();
     renderFontSelector();
+    updateViewModeUI();
     testGeminiAPI();
+}
+
+function updateViewModeUI() {
+    if (state.noteViewMode === 'card') {
+        elements.notesList.classList.remove('list-view');
+        elements.cardViewBtn.classList.add('active');
+        elements.listViewBtn.classList.remove('active');
+    } else { // list
+        elements.notesList.classList.add('list-view');
+        elements.cardViewBtn.classList.remove('active');
+        elements.listViewBtn.classList.add('active');
+    }
+}
+
+function setViewMode(mode) {
+    state.noteViewMode = mode;
+    saveViewMode();
+    updateViewModeUI();
+    renderNotes(null, false);
 }
 
 function handleCommandKeyPress(e) {
@@ -1145,42 +1183,85 @@ function renderNotes(notesToShow = null, animate = true) {
         return;
     }
 
-    notesToDisplay.forEach((note, index) => {
-        const noteCard = document.createElement('div');
-        noteCard.className = 'note-card';
-        noteCard.draggable = true;
-        noteCard.dataset.noteId = note.id;
-        if (!animate) {
-            noteCard.classList.add('visible');
-        }
-        noteCard.onclick = () => openNote(note);
-        noteCard.addEventListener('dragstart', handleDragStart);
-        noteCard.addEventListener('dragend', handleDragEnd);
-        
-        const preview = note.content.substring(0, 150).replace(/[#*`]/g, '');
-
-        const tagsHTML = (note.tags && note.tags.length > 0)
-            ? `<div class="note-card-tags">${note.tags.slice().sort((a, b) => a.localeCompare(b)).map(tag => `<span class="note-card-tag">${tag}</span>`).join('')}</div>`
-            : '';
-
-        noteCard.innerHTML = `
-            <h3>${note.title}</h3>
-            <p>${preview}${note.content.length > 150 ? '...' : ''}</p>
-            ${tagsHTML}
-            <div class="note-meta">
-                <span><i class="fas fa-folder"></i> ${note.folder}</span>
-                <span><i class="fas fa-clock"></i> ${formatDate(note.modified)}</span>
-            </div>
-        `;
-        
-        elements.notesList.appendChild(noteCard);
-        
-        if (animate) {
-            setTimeout(() => {
+    if (state.noteViewMode === 'card') {
+        notesToDisplay.forEach((note, index) => {
+            const noteCard = document.createElement('div');
+            noteCard.className = 'note-card';
+            noteCard.draggable = true;
+            noteCard.dataset.noteId = note.id;
+            if (!animate) {
                 noteCard.classList.add('visible');
-            }, index * 50);
-        }
-    });
+            }
+            noteCard.onclick = () => openNote(note);
+            noteCard.addEventListener('dragstart', handleDragStart);
+            noteCard.addEventListener('dragend', handleDragEnd);
+            
+            const preview = note.content.substring(0, 150).replace(/[#*`]/g, '');
+
+            const tagsHTML = (note.tags && note.tags.length > 0)
+                ? `<div class="note-card-tags">${note.tags.slice().sort((a, b) => a.localeCompare(b)).map(tag => `<span class="note-card-tag">${tag}</span>`).join('')}</div>`
+                : '';
+
+            noteCard.innerHTML = `
+                <h3>${note.title}</h3>
+                <p>${preview}${note.content.length > 150 ? '...' : ''}</p>
+                ${tagsHTML}
+                <div class="note-meta">
+                    <span><i class="fas fa-folder"></i> ${note.folder}</span>
+                    <span><i class="fas fa-clock"></i> ${formatDate(note.modified)}</span>
+                </div>
+            `;
+            
+            elements.notesList.appendChild(noteCard);
+            
+            if (animate) {
+                setTimeout(() => {
+                    noteCard.classList.add('visible');
+                }, index * 50);
+            }
+        });
+    } else { // List view
+        notesToDisplay.forEach((note, index) => {
+            const noteListItem = document.createElement('div');
+            noteListItem.className = 'note-list-item';
+            noteListItem.draggable = true;
+            noteListItem.dataset.noteId = note.id;
+
+            if (!animate) {
+                noteListItem.classList.add('visible');
+            }
+            noteListItem.onclick = () => openNote(note);
+            noteListItem.addEventListener('dragstart', handleDragStart);
+            noteListItem.addEventListener('dragend', handleDragEnd);
+
+            const tagsHTML = (note.tags && note.tags.length > 0)
+                ? `<div class="note-card-tags">${note.tags.slice().sort((a, b) => a.localeCompare(b)).map(tag => `<span class="note-card-tag">${tag}</span>`).join('')}</div>`
+                : '';
+
+            const preview = note.content.substring(0, 250).replace(/[#*`]/g, '');
+
+            noteListItem.innerHTML = `
+                <div class="note-list-item-main">
+                    <h3 class="note-list-item-title">${note.title}</h3>
+                    <p class="note-list-item-excerpt">${preview}${note.content.length > 250 ? '...' : ''}</p>
+                    ${tagsHTML}
+                </div>
+                <div class="note-list-item-meta">
+                    <span title="Folder"><i class="fas fa-folder"></i> ${note.folder}</span>
+                    <span title="Created on ${new Date(note.created).toLocaleDateString()}"><i class="fas fa-calendar-days"></i> ${formatDate(note.created)}</span>
+                    <span title="Last modified on ${new Date(note.modified).toLocaleDateString()}"><i class="fas fa-clock"></i> ${formatDate(note.modified)}</span>
+                </div>
+            `;
+
+            elements.notesList.appendChild(noteListItem);
+
+            if (animate) {
+                setTimeout(() => {
+                    noteListItem.classList.add('visible');
+                }, index * 50);
+            }
+        });
+    }
 }
 
 function selectFolder(folder) {

@@ -2287,6 +2287,13 @@ async function performContextualAIAction(action, tone) {
         
         await saveData();
 
+        // After a background update, refresh the notes list to reflect the new order,
+        // but only if we're not in a semantic search view.
+        // We do this without animation to make it less jarring.
+        if (!state.isSemanticSearching) {
+            renderNotes(null, false);
+        }
+
         // Sync UI only if the note is still open in the editor
         if (state.currentNote && state.currentNote.id === noteForAction.id) {
             openNote(noteToUpdate); // Re-opening syncs the entire editor state correctly

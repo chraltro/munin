@@ -1,11 +1,4 @@
-// Chrisidian - AI-Powered Notes App
-// SECURITY: Update the passwordHash below BEFORE deploying!
-// Generate your hash at: https://www.sha256online.com/
-
-// Configuration and State
 const APP_CONFIG = {
-    // Password hash - default is 'Hello World!' FOR DEMO ONLY!
-    // Generate your own at: https://www.sha256online.com/
     passwordHash: '7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069',
     gistFilename: 'chrisidian-notes.json'
 };
@@ -21,7 +14,6 @@ let state = {
     gistId: null
 };
 
-// DOM Elements
 const loginScreen = document.getElementById('loginScreen');
 const mainApp = document.getElementById('mainApp');
 const loginForm = document.getElementById('loginForm');
@@ -47,9 +39,7 @@ const deleteNoteBtn = document.getElementById('deleteNoteBtn');
 const closeEditorBtn = document.getElementById('closeEditorBtn');
 const loadingOverlay = document.getElementById('loadingOverlay');
 
-// Initialize App
 document.addEventListener('DOMContentLoaded', () => {
-    // Security warning for default hash
     if (APP_CONFIG.passwordHash === '7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069') {
         console.warn('⚠️ SECURITY WARNING: Using default password hash! Change it before deploying!');
         const warning = document.getElementById('securityWarning');
@@ -60,7 +50,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setupEventListeners();
 });
 
-// Authentication
 function checkAutoLogin() {
     const savedAuth = localStorage.getItem('chrisidian_auth');
     if (savedAuth) {
@@ -76,7 +65,6 @@ function checkAutoLogin() {
 loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     
-    // Hash the entered password and compare
     const enteredPasswordHash = await hashPassword(passwordInput.value);
     
     if (enteredPasswordHash !== APP_CONFIG.passwordHash) {
@@ -88,7 +76,6 @@ loginForm.addEventListener('submit', async (e) => {
     state.githubToken = githubTokenInput.value;
     state.isAuthenticated = true;
     
-    // Save auth for auto-login
     localStorage.setItem('chrisidian_auth', JSON.stringify({
         geminiKey: state.geminiKey,
         githubToken: state.githubToken
@@ -98,7 +85,6 @@ loginForm.addEventListener('submit', async (e) => {
     await loadData();
 });
 
-// Hash function
 async function hashPassword(password) {
     const msgUint8 = new TextEncoder().encode(password);
     const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
@@ -124,7 +110,6 @@ function showMainApp() {
     mainApp.style.display = 'flex';
     renderFolders();
     
-    // Test Gemini API on login
     testGeminiAPI().then(result => {
         if (result && result.candidates) {
             console.log('✅ Gemini API is working');
@@ -135,7 +120,6 @@ function showMainApp() {
     });
 }
 
-// Event Listeners
 function setupEventListeners() {
     processBtn.addEventListener('click', processCommand);
     commandInput.addEventListener('keypress', (e) => {
@@ -151,10 +135,8 @@ function setupEventListeners() {
     closeEditorBtn.addEventListener('click', closeEditor);
 }
 
-// Test Gemini API
 async function testGeminiAPI() {
     try {
-        // Try 2.5 first
         let response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${state.geminiKey}`, {
             method: 'POST',
             headers: {
@@ -170,7 +152,6 @@ async function testGeminiAPI() {
         });
         
         if (!response.ok && response.status === 404) {
-            // Try 1.5 as fallback
             response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${state.geminiKey}`, {
                 method: 'POST',
                 headers: {
@@ -195,10 +176,8 @@ async function testGeminiAPI() {
     }
 }
 
-// GitHub Gist Storage
 async function loadData() {
     try {
-        // First, try to find existing gist
         const response = await fetch('https://api.github.com/gists', {
             headers: {
                 'Authorization': `token ${state.githubToken}`,
@@ -232,7 +211,6 @@ async function loadData() {
             state.notes = content.notes || [];
             state.folders = content.folders || state.folders;
         } else {
-            // Create new gist
             await saveData();
         }
         
@@ -263,7 +241,6 @@ async function saveData() {
         };
         
         if (state.gistId) {
-            // Update existing gist
             const response = await fetch(`https://api.github.com/gists/${state.gistId}`, {
                 method: 'PATCH',
                 headers: {
@@ -282,7 +259,6 @@ async function saveData() {
                 throw new Error(`GitHub API error: ${error.message || response.statusText}`);
             }
         } else {
-            // Create new gist
             gistData.description = 'Chrisidian Notes Data';
             const response = await fetch('https://api.github.com/gists', {
                 method: 'POST',
@@ -313,7 +289,6 @@ async function saveData() {
     }
 }
 
-// AI Processing with Gemini
 async function processCommand() {
     const command = commandInput.value.trim();
     if (!command) return;
@@ -321,7 +296,6 @@ async function processCommand() {
     showLoading(true);
     
     try {
-        // Prepare context about existing structure
         const context = {
             folders: state.folders,
             recentNotes: state.notes.slice(-10).map(n => ({
@@ -335,7 +309,6 @@ async function processCommand() {
             throw new Error('Gemini API key is missing');
         }
         
-        // Call Gemini API - try 2.5 Flash first, fallback to 1.5
         let response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${state.geminiKey}`, {
             method: 'POST',
             headers: {
@@ -369,7 +342,6 @@ Respond ONLY with valid JSON (no markdown, no extra text):
             })
         });
         
-        // If 2.5 fails, try 1.5
         if (!response.ok && response.status === 404) {
             console.log('Gemini 2.5 not available, trying 1.5...');
             response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${state.geminiKey}`, {
@@ -415,7 +387,6 @@ Respond ONLY with valid JSON (no markdown, no extra text):
             } else if (response.status === 400 && errorData?.error?.message?.includes('model')) {
                 throw new Error('Gemini model error. The model name might have changed.');
             } else if (response.status === 404) {
-                // This is handled by the fallback logic above
                 throw new Error('Gemini model not found.');
             }
             throw new Error(`Gemini API error: ${response.status} ${response.statusText}`);
@@ -423,18 +394,32 @@ Respond ONLY with valid JSON (no markdown, no extra text):
         
         const result = await response.json();
         console.log('Gemini API response:', result);
-        
-        // Check if response has expected structure
-        if (!result.candidates || !result.candidates[0] || !result.candidates[0].content || !result.candidates[0].content.parts) {
-            console.error('Unexpected Gemini API response structure:', result);
+
+        const candidate = result?.candidates?.[0];
+
+        if (!candidate) {
+            console.error('Unexpected Gemini API response: No candidates found.', result);
+            throw new Error('Unexpected response from Gemini API: No candidates returned.');
+        }
+
+        if (candidate.finishReason && candidate.finishReason !== "STOP") {
+            const reason = candidate.finishReason;
+            console.error(`Gemini API call finished with reason: ${reason}`, candidate);
+            let errorMessage = `API call failed with reason: ${reason}.`;
+            if (reason === 'SAFETY') {
+                errorMessage += ' The prompt or response was blocked due to safety concerns.';
+            }
+            throw new Error(errorMessage);
+        }
+
+        if (!candidate.content || !candidate.content.parts || candidate.content.parts.length === 0 || !candidate.content.parts[0].text) {
+            console.error('Unexpected Gemini API response structure: Content or text part is missing.', result);
             throw new Error('Unexpected response from Gemini API. Check console for details.');
         }
-        
-        // Extract JSON from the response - Gemini might wrap it in markdown or extra text
-        let aiResponseText = result.candidates[0].content.parts[0].text;
+
+        let aiResponseText = candidate.content.parts[0].text;
         console.log('AI response text:', aiResponseText);
         
-        // Try to extract JSON if it's wrapped in backticks or has extra text
         const jsonMatch = aiResponseText.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
             aiResponseText = jsonMatch[0];
@@ -443,12 +428,10 @@ Respond ONLY with valid JSON (no markdown, no extra text):
         const aiResponse = JSON.parse(aiResponseText);
         console.log('Parsed AI response:', aiResponse);
         
-        // Handle new folder if suggested
         if (aiResponse.isNewFolder && !state.folders.includes(aiResponse.folder)) {
             state.folders.push(aiResponse.folder);
         }
         
-        // Create note
         const newNote = {
             id: Date.now(),
             title: aiResponse.title,
@@ -461,12 +444,10 @@ Respond ONLY with valid JSON (no markdown, no extra text):
         state.notes.push(newNote);
         await saveData();
         
-        // Clear input and refresh UI
         commandInput.value = '';
         renderFolders();
         renderNotes();
         
-        // Open the new note
         openNote(newNote);
         
     } catch (error) {
@@ -478,7 +459,6 @@ Respond ONLY with valid JSON (no markdown, no extra text):
     }
 }
 
-// UI Rendering
 function renderFolders() {
     folderList.innerHTML = `
         <div class="folder-item ${state.currentFolder === 'All Notes' ? 'active' : ''}" 
@@ -535,7 +515,6 @@ function selectFolder(folder) {
     renderNotes();
 }
 
-// Note Operations
 async function createNewFolder() {
     const folderName = prompt('Enter folder name:');
     if (folderName && !state.folders.includes(folderName)) {
@@ -562,7 +541,6 @@ async function createNewNote() {
         renderNotes();
         openNote(newNote);
     } catch (error) {
-        // Remove the note if save failed
         state.notes = state.notes.filter(n => n.id !== newNote.id);
         console.error('Failed to create note:', error);
         alert(`Failed to create note: ${error.message}`);
@@ -594,7 +572,6 @@ function setEditorMode(mode) {
         editModeBtn.classList.remove('active');
         previewModeBtn.classList.add('active');
         
-        // Render markdown
         const html = marked.parse(noteEditor.value);
         notePreview.innerHTML = DOMPurify.sanitize(html);
     }
@@ -603,21 +580,18 @@ function setEditorMode(mode) {
 async function saveCurrentNote() {
     if (!state.currentNote) return;
     
-    // Find the note in the array and update it
     const noteIndex = state.notes.findIndex(n => n.id === state.currentNote.id);
     if (noteIndex !== -1) {
         state.notes[noteIndex].title = noteTitle.value;
         state.notes[noteIndex].content = noteEditor.value;
         state.notes[noteIndex].modified = new Date().toISOString();
         
-        // Update the reference
         state.currentNote = state.notes[noteIndex];
     }
     
     await saveData();
     renderNotes();
     
-    // Show success feedback
     const saveBtn = document.getElementById('saveNoteBtn');
     const originalText = saveBtn.innerHTML;
     saveBtn.innerHTML = '<i class="fas fa-check"></i> Saved!';
@@ -637,7 +611,6 @@ async function deleteCurrentNote() {
     }
 }
 
-// Helper Functions
 function showLoading(show, message = 'Processing with AI...') {
     loadingOverlay.style.display = show ? 'flex' : 'none';
     if (show && message) {

@@ -24,6 +24,7 @@ let state = {
     allTags: [],
     currentNote: null,
     gistId: null,
+    gistOwner: null,
     isNoteDirty: false,
     isEmbeddingStale: false,
     originalNoteContent: '',
@@ -104,6 +105,7 @@ const elements = {
     notePreview: document.getElementById('notePreview'),
     editModeBtn: document.getElementById('editModeBtn'),
     previewModeBtn: document.getElementById('previewModeBtn'),
+    historyBtn: document.getElementById('historyBtn'),
     saveNoteBtn: document.getElementById('saveNoteBtn'),
     deleteNoteBtn: document.getElementById('deleteNoteBtn'),
     closeEditorBtn: document.getElementById('closeEditorBtn'),
@@ -209,6 +211,7 @@ function setupEventListeners() {
     elements.newNoteBtn.addEventListener('click', createNewNote);
     elements.editModeBtn.addEventListener('click', () => setEditorMode('edit'));
     elements.previewModeBtn.addEventListener('click', () => setEditorMode('preview'));
+    elements.historyBtn.addEventListener('click', showHistory);
     elements.saveNoteBtn.addEventListener('click', () => saveCurrentNote(true));
     elements.deleteNoteBtn.addEventListener('click', deleteCurrentNote);
     elements.closeEditorBtn.addEventListener('click', closeEditor);
@@ -513,6 +516,15 @@ function toggleEditorHeader() {
     }
 }
 
+function showHistory() {
+    if (state.gistOwner && state.gistId) {
+        const url = `https://gist.github.com/${state.gistOwner}/${state.gistId}/revisions`;
+        window.open(url, '_blank');
+    } else {
+        showNotification('Gist history is not available yet.', 'info');
+    }
+}
+
 async function testGeminiAPI() {
     try {
         const testPrompt = 'Say "Hello World" in JSON format: {"message": "Hello World"}';
@@ -551,6 +563,7 @@ async function loadData() {
         
         if (existingGist) {
             state.gistId = existingGist.id;
+            state.gistOwner = existingGist.owner.login;
             const gistData = await fetch(`https://api.github.com/gists/${state.gistId}`, {
                 headers: {
                     'Authorization': `token ${state.githubToken}`,
@@ -641,6 +654,7 @@ async function saveData() {
             
             const result = await response.json();
             state.gistId = result.id;
+            state.gistOwner = result.owner.login;
         }
     } catch (error) {
         console.error('Error saving data:', error);
@@ -1372,6 +1386,7 @@ function openNote(note) {
     }
 
     state.currentNote = note;
+    elements.historyBtn.disabled = !(state.gistOwner && state.gistId);
     elements.noteTitle.value = note.title;
     renderNoteTags();
     elements.noteEditor.value = note.content;

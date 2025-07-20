@@ -25,7 +25,8 @@ let state = {
     isSemanticSearching: false,
     saveTimeout: null,
     currentServings: null,
-    baseServings: null
+    baseServings: null,
+    activeAIJobs: 0
 };
 
 let userPreferences = {
@@ -2177,140 +2178,127 @@ function handleAiActionClick(e) {
     }
 }
 
-function replaceSelectedText(replacement) {
-    const editor = elements.noteEditor;
-    const start = editor.selectionStart;
-    const end = editor.selectionEnd;
-    
-    editor.focus();
-    // This is the modern, correct way that preserves undo history
-    const success = document.execCommand('insertText', false, replacement);
-    
-    if (!success) {
-        // Fallback for older browsers or edge cases
-        editor.value = editor.value.substring(0, start) + replacement + editor.value.substring(end);
-    }
-    
-    editor.selectionStart = start;
-    editor.selectionEnd = start + replacement.length;
+function incrementAIJobs() {
+    state.activeAIJobs++;
+    updateSaveStatus(`AI is working (${state.activeAIJobs})...`, 'saving');
+}
 
-    handleNoteChange(); // Trigger autosave
+function decrementAIJobs(wasSuccess, message) {
+    state.activeAIJobs--;
+    if (state.activeAIJobs > 0) {
+        updateSaveStatus(`AI is working (${state.activeAIJobs})...`, 'saving');
+    } else if (wasSuccess) {
+        updateSaveStatus(message, 'success');
+    } else {
+        updateSaveStatus(message, 'error');
+    }
 }
 
 async function performContextualAIAction(action, tone) {
     const editor = elements.noteEditor;
     const isPreview = elements.previewModeBtn.classList.contains('active');
-    
+
+    // --- Capture context at the moment the action is fired ---
+    const noteForAction = { ...state.currentNote };
+    if (!noteForAction || !noteForAction.id) return;
+    const originalContent = editor.value;
+    const selectionStart = editor.selectionStart;
+    const selectionEnd = editor.selectionEnd;
+    // --- End context capture ---
+
     let isFullNoteAction = false;
-
-    // In preview mode, there's no selection, so actions apply to the full note.
-    if (isPreview && editor.selectionStart === editor.selectionEnd) {
+    if (isPreview || action === 'add_tags' || (action === 'cleanup' && selectionStart === selectionEnd)) {
         isFullNoteAction = true;
     }
-    
-    let selectedText = editor.value.substring(editor.selectionStart, editor.selectionEnd).trim();
 
-    // The 'cleanup' action should also work on the whole note if no text is selected in edit mode.
-    if (!selectedText && action === 'cleanup') {
-        isFullNoteAction = true;
-    }
-    
-    // The 'add_tags' action always applies to the full note content.
-    if (action === 'add_tags') {
-        isFullNoteAction = true;
-    }
-    
-    // If we're operating on the full note, update selection and text content accordingly.
-    if (isFullNoteAction) {
-        editor.selectionStart = 0;
-        editor.selectionEnd = editor.value.length;
-        selectedText = editor.value.trim();
-    }
-    
-    if (!selectedText) return;
+    const textToProcess = isFullNoteAction 
+        ? originalContent.trim() 
+        : originalContent.substring(selectionStart, selectionEnd).trim();
 
-    updateSaveStatus('AI is working...', 'saving');
+    if (!textToProcess) return;
 
-    const noteIsRecipe = state.currentNote && state.currentNote.folder === 'Recipes';
+    incrementAIJobs();
+
+    const noteIsRecipe = noteForAction.folder === 'Recipes';
     const noteContext = { isRecipe: noteIsRecipe };
     if (noteIsRecipe) {
         noteContext.recipeTemplate = getTemplates().find(t => t.title === 'Recipe Template').content;
     }
     if (action === 'add_tags') {
-        noteContext.currentTags = state.currentNote.tags || [];
+        noteContext.currentTags = noteForAction.tags || [];
         noteContext.allTags = state.allTags;
     }
-    
-    const prompt = getContextualPrompt(action, tone, selectedText, noteContext);
+
+    const prompt = getContextualPrompt(action, tone, textToProcess, noteContext);
 
     try {
         const result = await callGeminiAPI(prompt, { temperature: 0.2, maxOutputTokens: 4096 });
-        if (!result || !result.candidates || !result.candidates.length === 0) {
+        if (!result || !result.candidates || result.candidates.length === 0) {
             throw new Error("AI did not return a valid response.");
         }
 
         const responseText = result.candidates[0].content.parts[0].text;
+        const targetNoteIndex = state.notes.findIndex(n => n.id === noteForAction.id);
+        if (targetNoteIndex === -1) {
+            throw new Error("Note was deleted while AI was working.");
+        }
         
+        let successMessage = "AI action complete";
+        const noteToUpdate = state.notes[targetNoteIndex];
+
         if (action === 'cleanup' && noteIsRecipe) {
             const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-            if (!jsonMatch) {
-                console.error("Recipe cleanup did not return JSON. Raw response:", responseText);
-                throw new Error("AI did not respond with valid JSON for recipe cleanup.");
-            }
+            if (!jsonMatch) throw new Error("AI did not respond with valid JSON for recipe cleanup.");
             
             const { content, servings } = JSON.parse(jsonMatch[0]);
-            
-            if (content && servings) {
-                replaceSelectedText(content);
-                
-                // Update servings in state and UI
-                state.currentNote.servings = servings;
-                state.currentServings = servings;
-                state.baseServings = servings; // After cleanup, this is the new base
-                elements.servingsInput.value = servings;
-                handleNoteChange(); // Explicitly trigger save logic after updating servings
-                setEditorMode('preview'); // Re-render preview to show changes
-                updateSaveStatus('Recipe cleaned up', 'success');
-            } else {
-                throw new Error("AI response for recipe cleanup was missing 'content' or 'servings'.");
-            }
+            if (!content || !servings) throw new Error("AI response for recipe cleanup was missing 'content' or 'servings'.");
+
+            noteToUpdate.content = content;
+            noteToUpdate.servings = servings;
+            successMessage = 'Recipe cleaned up';
+
         } else if (action === 'add_tags') {
             const jsonMatch = responseText.match(/\[[\s\S]*\]/);
-            if (!jsonMatch) {
-                console.error("Add Tags did not return JSON array. Raw response:", responseText);
-                throw new Error("AI did not respond with a valid JSON array for adding tags.");
-            }
+            if (!jsonMatch) throw new Error("AI did not respond with a valid JSON array for adding tags.");
             
             const suggestedTags = JSON.parse(jsonMatch[0]);
-
-            if (Array.isArray(suggestedTags)) {
-                const currentTags = new Set(state.currentNote.tags || []);
-                suggestedTags.forEach(tag => currentTags.add(tag));
-                
-                state.currentNote.tags = Array.from(currentTags).sort((a, b) => a.localeCompare(b));
-                
-                renderNoteTags();
-                handleNoteChange(); // Triggers debounced save
-                
-                // If any of the new tags are actually new to the system, update global tags
-                const newSystemTags = suggestedTags.filter(t => !state.allTags.includes(t));
-                if (newSystemTags.length > 0) {
-                    updateAllTags();
-                    renderTags();
-                }
-                updateSaveStatus('Tags added', 'success');
-            } else {
-                 throw new Error("AI response for adding tags was not a JSON array.");
+            if (!Array.isArray(suggestedTags)) throw new Error("AI response for adding tags was not a JSON array.");
+            
+            const currentTags = new Set(noteToUpdate.tags || []);
+            suggestedTags.forEach(tag => currentTags.add(tag));
+            noteToUpdate.tags = Array.from(currentTags).sort((a, b) => a.localeCompare(b));
+            
+            const newSystemTags = suggestedTags.filter(t => !state.allTags.includes(t));
+            if (newSystemTags.length > 0) {
+                updateAllTags();
+                renderTags();
             }
-        } else {
-            replaceSelectedText(responseText);
+            successMessage = 'Tags added';
+
+        } else { // Generic text replacement
+            const start = isFullNoteAction ? 0 : selectionStart;
+            const end = isFullNoteAction ? originalContent.length : selectionEnd;
+            noteToUpdate.content = originalContent.substring(0, start) + responseText + originalContent.substring(end);
+            successMessage = 'Text updated';
         }
+        
+        noteToUpdate.modified = new Date().toISOString();
+        noteToUpdate.embedding = await callEmbeddingAPI(`${noteToUpdate.title}\n${noteToUpdate.content}`);
+        
+        await saveData();
+
+        // Sync UI only if the note is still open in the editor
+        if (state.currentNote && state.currentNote.id === noteForAction.id) {
+            openNote(noteToUpdate); // Re-opening syncs the entire editor state correctly
+            setEditorMode('preview'); // Default to preview to show results
+        }
+        
+        decrementAIJobs(true, successMessage);
 
     } catch (error) {
         console.error(`Error performing contextual action "${action}":`, error);
         showNotification(`AI action failed: ${error.message}`, 'error');
-        updateSaveStatus('AI action failed', 'error');
-    } finally {
+        decrementAIJobs(false, 'AI action failed');
     }
 }
 

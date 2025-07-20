@@ -754,9 +754,9 @@ header h1 {
 
 #themeSwitcherContainer {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(24px, 1fr));
-    gap: 0.75rem;
-    padding: 1rem;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    padding: 1.25rem;
     justify-items: center;
     border-top: 1px solid var(--border);
 }

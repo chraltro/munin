@@ -303,8 +303,9 @@ Example for "add milk to my grocery list": {"intent": "UPDATE", "targetTitle": "
                 showLoading(true, 'Updating note...');
                 const updatePrompt = `You are an AI note editor. Update the following note based on the user's command.
 - Modify the text directly.
-- Respond with ONLY a single JSON object containing the full, updated content. Do not add explanations.
-
+- Respond with ONLY a single JSON object containing the full, updated content. Do not add explanations. If the user asks to add to the note, append the new content to the existing content - do not forget to keep the old content.
+- Suggest a new title if the existing one is not relevant.
+- If the user asks to change the title, update it accordingly.
 User Command: "${command}"
 
 Original Note Content to Update:

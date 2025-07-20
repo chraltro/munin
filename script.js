@@ -345,7 +345,7 @@ Now, process the user command and provide the JSON response.`;
                     temperature: 0.5,
                     topK: 1,
                     topP: 1,
-                    maxOutputTokens: 2048,
+                    maxOutputTokens: 65536,
                 }
             })
         });
@@ -361,7 +361,7 @@ Now, process the user command and provide the JSON response.`;
                         temperature: 0.5,
                         topK: 1,
                         topP: 1,
-                        maxOutputTokens: 2048,
+                        maxOutputTokens: 65536,
                     }
                 })
             });

@@ -14,6 +14,17 @@ let state = {
     gistId: null
 };
 
+const THEMES = [
+    { name: 'Dusk', className: 'theme-dusk', color: '#6366f1' },
+    { name: 'Forest', className: 'theme-forest', color: '#22c55e' },
+    { name: 'Rose', className: 'theme-rose', color: '#f43f5e' },
+    { name: 'Ocean', className: 'theme-ocean', color: '#38bdf8' },
+    { name: 'Amethyst', className: 'theme-amethyst', color: '#a855f7' },
+    { name: 'Slate', className: 'theme-slate', color: '#38bdf8' },
+    { name: 'Sunset', className: 'theme-sunset', color: '#f97316' },
+    { name: 'Mint', className: 'theme-mint', color: '#4ade80' },
+];
+
 const loginScreen = document.getElementById('loginScreen');
 const mainApp = document.getElementById('mainApp');
 const loginForm = document.getElementById('loginForm');
@@ -43,6 +54,11 @@ const toggleHeaderBtn = document.getElementById('toggleHeaderBtn');
 const aiResponseModal = document.getElementById('aiResponseModal');
 const aiResponseOutput = document.getElementById('aiResponseOutput');
 const closeAiResponseBtn = document.getElementById('closeAiResponseBtn');
+const changeThemeBtn = document.getElementById('changeThemeBtn');
+const themeSwitcherContainer = document.getElementById('themeSwitcherContainer');
+const themeModal = document.getElementById('themeModal');
+const themeModalGrid = document.getElementById('themeModalGrid');
+const closeThemeModalBtn = document.getElementById('closeThemeModalBtn');
 
 document.addEventListener('DOMContentLoaded', () => {
     if (APP_CONFIG.passwordHash === '7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069') {
@@ -50,6 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const warning = document.getElementById('securityWarning');
         if (warning) warning.style.display = 'block';
     }
+    loadTheme();
     checkAutoLogin();
     setupEventListeners();
 });
@@ -108,6 +125,7 @@ function showMainApp() {
     loginScreen.style.display = 'none';
     mainApp.style.display = 'flex';
     renderFolders();
+    renderThemeSwitchers();
     testGeminiAPI().then(result => {
         if (result && result.candidates) {
             console.log('✅ Gemini API is working');
@@ -136,6 +154,11 @@ function setupEventListeners() {
         if (e.target === aiResponseModal) {
             aiResponseModal.style.display = 'none';
         }
+    });
+    changeThemeBtn.addEventListener('click', () => themeModal.style.display = 'flex');
+    closeThemeModalBtn.addEventListener('click', () => themeModal.style.display = 'none');
+    themeModal.addEventListener('click', (e) => {
+        if (e.target === themeModal) themeModal.style.display = 'none';
     });
 }
 
@@ -672,4 +695,48 @@ function formatDate(dateString) {
     } else {
         return noteDate.toLocaleDateString();
     }
+}
+
+function applyTheme(themeClassName) {
+    document.documentElement.className = '';
+    document.documentElement.classList.add(themeClassName);
+    localStorage.setItem('chrisidian_theme', themeClassName);
+
+    document.querySelectorAll('.theme-swatch').forEach(swatch => {
+        swatch.classList.toggle('active', swatch.dataset.theme === themeClassName);
+    });
+}
+
+function loadTheme() {
+    const savedTheme = localStorage.getItem('chrisidian_theme') || 'theme-dusk';
+    applyTheme(savedTheme);
+}
+
+function renderThemeSwitchers() {
+    themeSwitcherContainer.innerHTML = '';
+    themeModalGrid.innerHTML = '';
+    THEMES.forEach(theme => {
+        const swatch = document.createElement('button');
+        swatch.className = 'theme-swatch';
+        swatch.dataset.theme = theme.className;
+        swatch.title = theme.name;
+        swatch.style.backgroundColor = theme.color;
+        swatch.onclick = () => applyTheme(theme.className);
+        themeSwitcherContainer.appendChild(swatch);
+
+        const card = document.createElement('div');
+        card.className = 'theme-card';
+        card.onclick = () => {
+            applyTheme(theme.className);
+            themeModal.style.display = 'none';
+        };
+        card.innerHTML = `
+            <div class="theme-card-swatch" style="background-color: ${theme.color};"></div>
+            <span>${theme.name}</span>
+        `;
+        themeModalGrid.appendChild(card);
+    });
+    const currentTheme = localStorage.getItem('chrisidian_theme') || 'theme-dusk';
+    const activeSwatch = themeSwitcherContainer.querySelector(`[data-theme="${currentTheme}"]`);
+    if (activeSwatch) activeSwatch.classList.add('active');
 }

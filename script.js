@@ -6,7 +6,7 @@
 const APP_CONFIG = {
     // Password hash - default is 'Hello World!' FOR DEMO ONLY!
     // Generate your own at: https://www.sha256online.com/
-    passwordHash: '7f72131af35c82819bb44f256e34419f381fdeb465b1727d153b58030fabbcb7',
+    passwordHash: '7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069',
     gistFilename: 'chrisidian-notes.json'
 };
 
@@ -123,6 +123,16 @@ function showMainApp() {
     loginScreen.style.display = 'none';
     mainApp.style.display = 'flex';
     renderFolders();
+    
+    // Test Gemini API on login
+    testGeminiAPI().then(result => {
+        if (result && result.candidates) {
+            console.log('✅ Gemini API is working');
+        } else {
+            console.error('❌ Gemini API test failed');
+            alert('Warning: Gemini API might not be working correctly. Check your API key and console for details.');
+        }
+    });
 }
 
 // Event Listeners
@@ -141,18 +151,69 @@ function setupEventListeners() {
     closeEditorBtn.addEventListener('click', closeEditor);
 }
 
+// Test Gemini API
+async function testGeminiAPI() {
+    try {
+        // Try 2.5 first
+        let response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${state.geminiKey}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                contents: [{
+                    parts: [{
+                        text: 'Say "Hello World" in JSON format: {"message": "Hello World"}'
+                    }]
+                }]
+            })
+        });
+        
+        if (!response.ok && response.status === 404) {
+            // Try 1.5 as fallback
+            response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${state.geminiKey}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{
+                            text: 'Say "Hello World" in JSON format: {"message": "Hello World"}'
+                        }]
+                    }]
+                })
+            });
+        }
+        
+        const result = await response.json();
+        console.log('Gemini API test response:', result);
+        return result;
+    } catch (error) {
+        console.error('Gemini API test failed:', error);
+        return null;
+    }
+}
+
 // GitHub Gist Storage
 async function loadData() {
     try {
         // First, try to find existing gist
-        const gists = await fetch('https://api.github.com/gists', {
+        const response = await fetch('https://api.github.com/gists', {
             headers: {
                 'Authorization': `token ${state.githubToken}`,
                 'Accept': 'application/vnd.github.v3+json'
             }
         });
         
-        const gistsList = await gists.json();
+        if (!response.ok) {
+            if (response.status === 403) {
+                throw new Error('GitHub token needs "gist" permission. Go to GitHub Settings > Developer settings > Personal access tokens > Select your token > Edit > Check "gist" scope');
+            }
+            throw new Error(`GitHub API error: ${response.statusText}`);
+        }
+        
+        const gistsList = await response.json();
         const existingGist = gistsList.find(g => 
             g.files && g.files[APP_CONFIG.gistFilename]
         );
@@ -179,11 +240,12 @@ async function loadData() {
         renderNotes();
     } catch (error) {
         console.error('Error loading data:', error);
-        alert('Error loading data. Check your GitHub token.');
+        alert(error.message);
     }
 }
 
 async function saveData() {
+    showLoading(true, 'Saving...');
     try {
         const data = {
             notes: state.notes,
@@ -202,7 +264,7 @@ async function saveData() {
         
         if (state.gistId) {
             // Update existing gist
-            await fetch(`https://api.github.com/gists/${state.gistId}`, {
+            const response = await fetch(`https://api.github.com/gists/${state.gistId}`, {
                 method: 'PATCH',
                 headers: {
                     'Authorization': `token ${state.githubToken}`,
@@ -211,6 +273,14 @@ async function saveData() {
                 },
                 body: JSON.stringify(gistData)
             });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                if (response.status === 403) {
+                    throw new Error('GitHub token needs "gist" permission. Go to GitHub Settings > Developer settings > Personal access tokens > Select your token > Edit > Check "gist" scope');
+                }
+                throw new Error(`GitHub API error: ${error.message || response.statusText}`);
+            }
         } else {
             // Create new gist
             gistData.description = 'Chrisidian Notes Data';
@@ -224,12 +294,22 @@ async function saveData() {
                 body: JSON.stringify(gistData)
             });
             
+            if (!response.ok) {
+                const error = await response.json();
+                if (response.status === 403) {
+                    throw new Error('GitHub token needs "gist" permission. Go to GitHub Settings > Developer settings > Personal access tokens > Select your token > Edit > Check "gist" scope');
+                }
+                throw new Error(`GitHub API error: ${error.message || response.statusText}`);
+            }
+            
             const result = await response.json();
             state.gistId = result.id;
         }
     } catch (error) {
         console.error('Error saving data:', error);
-        alert('Error saving data. Check your GitHub token.');
+        alert(error.message);
+    } finally {
+        showLoading(false);
     }
 }
 
@@ -251,8 +331,12 @@ async function processCommand() {
             }))
         };
         
-        // Call Gemini API
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${state.geminiKey}`, {
+        if (!state.geminiKey || state.geminiKey.trim() === '') {
+            throw new Error('Gemini API key is missing');
+        }
+        
+        // Call Gemini API - try 2.5 Flash first, fallback to 1.5
+        let response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${state.geminiKey}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -267,7 +351,7 @@ Command: "${command}"
 Current folders: ${JSON.stringify(context.folders)}
 Recent notes for context: ${JSON.stringify(context.recentNotes)}
 
-Respond in JSON format:
+Respond ONLY with valid JSON (no markdown, no extra text):
 {
     "title": "suggested title",
     "content": "extracted content in markdown",
@@ -275,12 +359,89 @@ Respond in JSON format:
     "isNewFolder": true/false
 }`
                     }]
-                }]
+                }],
+                generationConfig: {
+                    temperature: 0.7,
+                    topK: 1,
+                    topP: 1,
+                    maxOutputTokens: 2048,
+                }
             })
         });
         
+        // If 2.5 fails, try 1.5
+        if (!response.ok && response.status === 404) {
+            console.log('Gemini 2.5 not available, trying 1.5...');
+            response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${state.geminiKey}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{
+                            text: `You are an AI assistant for a note-taking app. Analyze this command and extract the note content, suggest a title, and determine the best folder.
+
+Command: "${command}"
+
+Current folders: ${JSON.stringify(context.folders)}
+Recent notes for context: ${JSON.stringify(context.recentNotes)}
+
+Respond ONLY with valid JSON (no markdown, no extra text):
+{
+    "title": "suggested title",
+    "content": "extracted content in markdown",
+    "folder": "best matching folder or suggest new",
+    "isNewFolder": true/false
+}`
+                        }]
+                    }],
+                    generationConfig: {
+                        temperature: 0.7,
+                        topK: 1,
+                        topP: 1,
+                        maxOutputTokens: 2048,
+                    }
+                })
+            });
+        }
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => null);
+            console.error('Gemini API error response:', errorData);
+            
+            if (response.status === 400 && errorData?.error?.message?.includes('API key not valid')) {
+                throw new Error('Invalid Gemini API key. Please check your API key.');
+            } else if (response.status === 400 && errorData?.error?.message?.includes('model')) {
+                throw new Error('Gemini model error. The model name might have changed.');
+            } else if (response.status === 404) {
+                // This is handled by the fallback logic above
+                throw new Error('Gemini model not found.');
+            }
+            throw new Error(`Gemini API error: ${response.status} ${response.statusText}`);
+        }
+        
         const result = await response.json();
-        const aiResponse = JSON.parse(result.candidates[0].content.parts[0].text);
+        console.log('Gemini API response:', result);
+        
+        // Check if response has expected structure
+        if (!result.candidates || !result.candidates[0] || !result.candidates[0].content || !result.candidates[0].content.parts) {
+            console.error('Unexpected Gemini API response structure:', result);
+            throw new Error('Unexpected response from Gemini API. Check console for details.');
+        }
+        
+        // Extract JSON from the response - Gemini might wrap it in markdown or extra text
+        let aiResponseText = result.candidates[0].content.parts[0].text;
+        console.log('AI response text:', aiResponseText);
+        
+        // Try to extract JSON if it's wrapped in backticks or has extra text
+        const jsonMatch = aiResponseText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            aiResponseText = jsonMatch[0];
+        }
+        
+        const aiResponse = JSON.parse(aiResponseText);
+        console.log('Parsed AI response:', aiResponse);
         
         // Handle new folder if suggested
         if (aiResponse.isNewFolder && !state.folders.includes(aiResponse.folder)) {
@@ -310,7 +471,8 @@ Respond in JSON format:
         
     } catch (error) {
         console.error('Error processing command:', error);
-        alert('Error processing command. Check your Gemini API key and try again.');
+        console.error('Full error details:', error.stack);
+        alert(`Error: ${error.message}\n\nCheck the console (F12) for more details.`);
     } finally {
         showLoading(false);
     }
@@ -374,16 +536,16 @@ function selectFolder(folder) {
 }
 
 // Note Operations
-function createNewFolder() {
+async function createNewFolder() {
     const folderName = prompt('Enter folder name:');
     if (folderName && !state.folders.includes(folderName)) {
         state.folders.push(folderName);
-        saveData();
+        await saveData();
         renderFolders();
     }
 }
 
-function createNewNote() {
+async function createNewNote() {
     const newNote = {
         id: Date.now(),
         title: 'New Note',
@@ -394,9 +556,17 @@ function createNewNote() {
     };
     
     state.notes.push(newNote);
-    saveData();
-    renderNotes();
-    openNote(newNote);
+    
+    try {
+        await saveData();
+        renderNotes();
+        openNote(newNote);
+    } catch (error) {
+        // Remove the note if save failed
+        state.notes = state.notes.filter(n => n.id !== newNote.id);
+        console.error('Failed to create note:', error);
+        alert(`Failed to create note: ${error.message}`);
+    }
 }
 
 function openNote(note) {
@@ -433,12 +603,27 @@ function setEditorMode(mode) {
 async function saveCurrentNote() {
     if (!state.currentNote) return;
     
-    state.currentNote.title = noteTitle.value;
-    state.currentNote.content = noteEditor.value;
-    state.currentNote.modified = new Date().toISOString();
+    // Find the note in the array and update it
+    const noteIndex = state.notes.findIndex(n => n.id === state.currentNote.id);
+    if (noteIndex !== -1) {
+        state.notes[noteIndex].title = noteTitle.value;
+        state.notes[noteIndex].content = noteEditor.value;
+        state.notes[noteIndex].modified = new Date().toISOString();
+        
+        // Update the reference
+        state.currentNote = state.notes[noteIndex];
+    }
     
     await saveData();
     renderNotes();
+    
+    // Show success feedback
+    const saveBtn = document.getElementById('saveNoteBtn');
+    const originalText = saveBtn.innerHTML;
+    saveBtn.innerHTML = '<i class="fas fa-check"></i> Saved!';
+    setTimeout(() => {
+        saveBtn.innerHTML = originalText;
+    }, 2000);
 }
 
 async function deleteCurrentNote() {
@@ -453,8 +638,12 @@ async function deleteCurrentNote() {
 }
 
 // Helper Functions
-function showLoading(show) {
+function showLoading(show, message = 'Processing with AI...') {
     loadingOverlay.style.display = show ? 'flex' : 'none';
+    if (show && message) {
+        const loadingText = loadingOverlay.querySelector('p');
+        if (loadingText) loadingText.textContent = message;
+    }
 }
 
 function formatDate(dateString) {

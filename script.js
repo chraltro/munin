@@ -1163,9 +1163,20 @@ function renderTags() {
     state.allTags.forEach(tag => {
         const tagEl = document.createElement('span');
         tagEl.className = `tag-item ${state.activeTags.includes(tag) ? 'active' : ''}`;
-        tagEl.textContent = tag;
         tagEl.onclick = () => selectTag(tag);
         tagEl.dataset.tagName = tag;
+        
+        tagEl.textContent = tag;
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-tag-btn';
+        deleteBtn.innerHTML = '&times;';
+        deleteBtn.title = `Delete tag "${tag}"`;
+        deleteBtn.onclick = (e) => {
+            e.stopPropagation();
+            deleteTag(tag);
+        };
+        tagEl.appendChild(deleteBtn);
 
         tagEl.addEventListener('dragover', handleDragOver);
         tagEl.addEventListener('dragenter', handleDragEnter);
@@ -1282,6 +1293,39 @@ async function deleteFolder(folderName) {
 
     await saveData();
     updateSaveStatus('Saved');
+}
+
+async function deleteTag(tagName) {
+    if (!confirm(`Are you sure you want to delete the tag "${tagName}"? This will remove it from all notes.`)) {
+        return;
+    }
+
+    // Remove from notes
+    state.notes.forEach(note => {
+        if (note.tags && note.tags.includes(tagName)) {
+            note.tags = note.tags.filter(t => t !== tagName);
+        }
+    });
+
+    // Remove from active filters if present, and from allTags list
+    state.activeTags = state.activeTags.filter(t => t !== tagName);
+    state.allTags = state.allTags.filter(t => t !== tagName);
+
+    // If the currently open note was affected, refresh its tag display
+    if (state.currentNote) {
+        const noteInState = state.notes.find(n => n.id === state.currentNote.id);
+        if (noteInState) {
+            state.currentNote = noteInState; // ensure currentNote reflects the change
+            renderNoteTags();
+        }
+    }
+    
+    await saveData();
+    
+    updateNotesHeader();
+    renderTags();
+    renderNotes();
+    updateSaveStatus('Tag deleted');
 }
 
 async function createNewNote(content = null, title = null, tags = []) {

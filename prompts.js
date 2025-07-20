@@ -48,8 +48,8 @@ TOOL-USE INSTRUCTIONS:
      2. Second step...
      \`\`\`
    - When creating a recipe, you MUST set the 'folder' to "Recipes" and add a 'servings' argument to the JSON (e.g., \`"servings": 4\`). The ingredient lines in the markdown 'content' MUST start with a list marker and a quantity.
-   - **args for a regular note**: { "title": "...", "content": "...", "folder": "...", "tags": ["relevant", "keywords"], "newFolder": true/false }
-   - **args for a RECIPE**: { "title": "...", "content": "...", "folder": "Recipes", "tags": ["recipe", "dessert"], "servings": 4, "newFolder": false }
+   - **args for a regular note**: { "title": "...", "content": "...", "folder": "...", "tags": ["Relevant", "Keywords"], "newFolder": true/false }
+   - **args for a RECIPE**: { "title": "...", "content": "...", "folder": "Recipes", "tags": ["Recipe", "Dessert"], "servings": 4, "newFolder": false }
 
 3. tool: "UPDATE_NOTE"
    - Use this to modify an existing note based on the 'Relevant Existing Notes'.

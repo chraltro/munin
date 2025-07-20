@@ -462,7 +462,8 @@ body {
 }
 
 .tag-item {
-    padding: 0.25rem 0.75rem;
+    position: relative;
+    padding: 0.25rem 2rem 0.25rem 0.75rem;
     border-radius: var(--radius);
     cursor: pointer;
     transition: var(--transition-fast);
@@ -475,6 +476,40 @@ body {
 .tag-item:hover {
     background: var(--bg-quaternary);
     transform: translateY(-1px);
+}
+
+.tag-item .delete-tag-btn {
+    display: none;
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 1.1em;
+    line-height: 1;
+    padding: 0.2rem;
+    border-radius: 50%;
+}
+
+.tag-item:hover .delete-tag-btn {
+    display: inline-block;
+}
+
+.tag-item .delete-tag-btn:hover {
+    color: var(--danger);
+    background-color: rgba(239, 68, 68, 0.1);
+}
+
+.tag-item.active .delete-tag-btn {
+    color: rgba(255,255,255,0.7);
+}
+
+.tag-item.active:hover .delete-tag-btn:hover {
+    color: white;
+    background-color: rgba(255,255,255,0.2);
 }
 
 .tag-item.active {

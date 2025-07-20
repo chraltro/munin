@@ -408,7 +408,7 @@ function handleSort(sortBy) {
         state.sort.order = state.sort.order === 'asc' ? 'desc' : 'asc';
     } else {
         state.sort.by = sortBy;
-        state.sort.order = sortBy === 'title' ? 'asc' : 'desc'; // Sensible defaults
+        state.sort.order = sortBy === 'title' || sortBy === 'folder' || sortBy === 'tags' ? 'asc' : 'desc'; // Sensible defaults
     }
     renderNotes(null, false);
 }
@@ -1184,6 +1184,12 @@ function renderNotes(notesToShow = null, animate = true) {
             if (by === 'title') {
                 valA = a.title.toLowerCase();
                 valB = b.title.toLowerCase();
+            } else if (by === 'folder') {
+                valA = a.folder.toLowerCase();
+                valB = b.folder.toLowerCase();
+            } else if (by === 'tags') {
+                valA = (a.tags && a.tags.length > 0) ? a.tags.slice().sort().join(',').toLowerCase() : '';
+                valB = (b.tags && b.tags.length > 0) ? b.tags.slice().sort().join(',').toLowerCase() : '';
             } else { // 'modified'
                 valA = new Date(a.modified);
                 valB = new Date(b.modified);
@@ -1264,8 +1270,8 @@ function renderNotes(notesToShow = null, animate = true) {
 
         header.innerHTML = `
             <div class="note-list-header-title sortable" data-sort-by="title">Title ${getSortIcon('title')}</div>
-            <div class="note-list-header-tags">Tags</div>
-            <div class="note-list-header-folder">Folder</div>
+            <div class="note-list-header-tags sortable" data-sort-by="tags">Tags ${getSortIcon('tags')}</div>
+            <div class="note-list-header-folder sortable" data-sort-by="folder">Folder ${getSortIcon('folder')}</div>
             <div class="note-list-header-modified sortable" data-sort-by="modified">Modified ${getSortIcon('modified')}</div>
         `;
         elements.notesList.appendChild(header);

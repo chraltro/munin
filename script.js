@@ -1408,11 +1408,31 @@ async function ensureTemplatesExist() {
     }
 
     const templates = getTemplates();
+    const templateTitlesFromCode = new Set(templates.map(t => t.title));
+
+    // Update or create templates
     for (const template of templates) {
-        const templateExists = state.notes.some(n => n.folder === templateFolder && n.title === template.title);
-        if (!templateExists) {
+        const existingTemplateIndex = state.notes.findIndex(n => n.folder === templateFolder && n.title === template.title);
+        
+        if (existingTemplateIndex !== -1) {
+            const existingTemplate = state.notes[existingTemplateIndex];
+            const contentNeedsUpdate = existingTemplate.content !== template.content;
+            const servingsNeedsUpdate = existingTemplate.servings !== template.servings;
+            const tagsNeedUpdate = JSON.stringify(existingTemplate.tags?.slice().sort()) !== JSON.stringify(template.tags?.slice().sort());
+            
+            if (contentNeedsUpdate || servingsNeedsUpdate || tagsNeedUpdate) {
+                console.log(`Updating template: ${template.title}`);
+                state.notes[existingTemplateIndex].content = template.content;
+                state.notes[existingTemplateIndex].tags = template.tags;
+                state.notes[existingTemplateIndex].servings = template.servings;
+                state.notes[existingTemplateIndex].modified = new Date().toISOString();
+                state.notes[existingTemplateIndex].embedding = await callEmbeddingAPI(`${template.title}\n${template.content}`);
+                madeChanges = true;
+            }
+        } else {
+            console.log(`Creating new template: ${template.title}`);
             const newTemplateNote = {
-                id: Date.now() + Math.random(), // Add random to avoid collision in loop
+                id: Date.now() + Math.random(),
                 title: template.title,
                 content: template.content,
                 folder: templateFolder,
@@ -1426,13 +1446,24 @@ async function ensureTemplatesExist() {
             madeChanges = true;
         }
     }
+
+    // Remove obsolete templates from user's notes
+    const templatesToRemove = state.notes.filter(note => 
+        note.folder === templateFolder && !templateTitlesFromCode.has(note.title)
+    );
+
+    if (templatesToRemove.length > 0) {
+        templatesToRemove.forEach(t => console.log(`Removing obsolete template: ${t.title}`));
+        state.notes = state.notes.filter(note => !templatesToRemove.some(t => t.id === note.id));
+        madeChanges = true;
+    }
     
     if (madeChanges) {
         updateAllTags();
         renderFolders();
         renderTags();
         await saveData();
-        console.log("Default templates ensured.");
+        console.log("Default templates ensured/updated.");
     }
 }
 

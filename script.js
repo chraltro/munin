@@ -117,7 +117,9 @@ const elements = {
     themeModal: document.getElementById('themeModal'),
     themeModalGrid: document.getElementById('themeModalGrid'),
     closeThemeModalBtn: document.getElementById('closeThemeModalBtn'),
-    mobileFolderSelector: document.getElementById('mobileFolderSelector'),
+    customMobileSelector: document.getElementById('customMobileSelector'),
+    customMobileSelectorBtn: document.getElementById('customMobileSelectorBtn'),
+    customMobileSelectorDropdown: document.getElementById('customMobileSelectorDropdown'),
     fontFamilySelector: document.getElementById('fontFamilySelector'),
     fontSizeSlider: document.getElementById('fontSizeSlider'),
     fontSizeValue: document.getElementById('fontSizeValue'),
@@ -216,7 +218,7 @@ function setupEventListeners() {
     elements.closeAiResponseBtn.addEventListener('click', () => elements.aiResponseModal.style.display = 'none');
     elements.changeThemeBtn.addEventListener('click', () => elements.themeModal.style.display = 'flex');
     elements.closeThemeModalBtn.addEventListener('click', () => elements.themeModal.style.display = 'none');
-    elements.mobileFolderSelector.addEventListener('change', handleMobileSelectorChange);
+    elements.customMobileSelectorBtn.addEventListener('click', toggleCustomMobileSelector);
     elements.fontFamilySelector.addEventListener('change', handleFontChange);
     elements.fontSizeSlider.addEventListener('input', handleFontSizeChange);
     elements.lineHeightSlider.addEventListener('input', handleLineHeightChange);
@@ -230,6 +232,12 @@ function setupEventListeners() {
 
     setupModalEventListeners();
     setupNoteLinkHandlers();
+
+    document.addEventListener('click', (e) => {
+        if (elements.customMobileSelector && !elements.customMobileSelector.contains(e.target)) {
+            elements.customMobileSelector.classList.remove('is-open');
+        }
+    });
 }
 
 function setupModalEventListeners() {
@@ -972,11 +980,10 @@ function clearSemanticSearch() {
 }
 
 function renderFolders() {
+    // Render desktop folder list
     elements.folderList.innerHTML = `
-        <div class="folder-item ${state.currentFolder === 'All Notes' ? 'active' : ''}" onclick="selectFolder('All Notes')">
-            <span class="folder-name">
-                <i class="fas fa-folder"></i> All Notes
-            </span>
+        <div class="folder-item ${state.currentFolder === 'All Notes' && state.currentTag === 'All Notes' ? 'active' : ''}" onclick="selectFolder('All Notes')">
+            <span class="folder-name"><i class="fas fa-folder"></i> All Notes</span>
         </div>
     `;
     
@@ -1003,19 +1010,13 @@ function renderFolders() {
         renameBtn.className = 'rename-folder-btn';
         renameBtn.title = `Rename folder "${folder}"`;
         renameBtn.innerHTML = '<i class="fas fa-pencil-alt"></i>';
-        renameBtn.onclick = (e) => {
-            e.stopPropagation();
-            renameFolder(folder);
-        };
+        renameBtn.onclick = (e) => { e.stopPropagation(); renameFolder(folder); };
 
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'delete-folder-btn';
         deleteBtn.title = `Delete folder "${folder}"`;
         deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
-        deleteBtn.onclick = (e) => {
-            e.stopPropagation();
-            deleteFolder(folder);
-        };
+        deleteBtn.onclick = (e) => { e.stopPropagation(); deleteFolder(folder); };
 
         actionsDiv.appendChild(renameBtn);
         actionsDiv.appendChild(deleteBtn);
@@ -1024,41 +1025,7 @@ function renderFolders() {
         elements.folderList.appendChild(folderEl);
     });
 
-    // Mobile selector logic
-    elements.mobileFolderSelector.innerHTML = '';
-    
-    const allNotesOption = document.createElement('option');
-    allNotesOption.value = 'folder:All Notes';
-    allNotesOption.textContent = 'All Notes';
-    elements.mobileFolderSelector.appendChild(allNotesOption);
-
-    const foldersGroup = document.createElement('optgroup');
-    foldersGroup.label = 'Folders';
-    state.folders.forEach(folder => {
-        const option = document.createElement('option');
-        option.value = `folder:${folder}`;
-        option.textContent = folder;
-        foldersGroup.appendChild(option);
-    });
-    elements.mobileFolderSelector.appendChild(foldersGroup);
-
-    if (state.allTags.length > 0) {
-        const tagsGroup = document.createElement('optgroup');
-        tagsGroup.label = 'Tags';
-        state.allTags.forEach(tag => {
-            const option = document.createElement('option');
-            option.value = `tag:${tag}`;
-            option.textContent = `#${tag}`;
-            tagsGroup.appendChild(option);
-        });
-        elements.mobileFolderSelector.appendChild(tagsGroup);
-    }
-    
-    if (state.currentTag !== 'All Notes') {
-        elements.mobileFolderSelector.value = `tag:${state.currentTag}`;
-    } else {
-        elements.mobileFolderSelector.value = `folder:${state.currentFolder}`;
-    }
+    renderCustomMobileSelector();
 }
 
 function renderNotes(notesToShow = null, animate = true) {
@@ -1651,19 +1618,67 @@ function handleLineHeightChange(e) {
     saveTypography();
 }
 
-let dragImage = null;
+function toggleCustomMobileSelector() {
+    elements.customMobileSelector.classList.toggle('is-open');
+}
 
-function handleMobileSelectorChange(e) {
-    const value = e.target.value;
-    const [type, ...nameParts] = value.split(':');
-    const name = nameParts.join(':');
+function renderCustomMobileSelector() {
+    const dropdown = elements.customMobileSelectorDropdown;
+    dropdown.innerHTML = ''; // Clear previous options
 
-    if (type === 'folder') {
-        selectFolder(name);
-    } else if (type === 'tag') {
-        selectTag(name);
+    // Set button text
+    const btn = elements.customMobileSelectorBtn;
+    if (state.currentTag !== 'All Notes') {
+        btn.innerHTML = `<span>Tag: <span class="tag-filter-name">${state.currentTag}</span></span><i class="fas fa-chevron-down"></i>`;
+    } else {
+        btn.innerHTML = `<span>${state.currentFolder}</span><i class="fas fa-chevron-down"></i>`;
+    }
+
+    // Add "All Notes" option
+    const allNotesOpt = document.createElement('div');
+    allNotesOpt.className = 'custom-select-option';
+    allNotesOpt.innerHTML = `<i class="fas fa-folder"></i> All Notes`;
+    allNotesOpt.onclick = () => { selectFolder('All Notes'); toggleCustomMobileSelector(); };
+    dropdown.appendChild(allNotesOpt);
+    
+    // Add Folders
+    if (state.folders.length > 0) {
+        const folderHeader = document.createElement('div');
+        folderHeader.className = 'custom-select-header';
+        folderHeader.textContent = 'Folders';
+        dropdown.appendChild(folderHeader);
+
+        state.folders.forEach(folder => {
+            const opt = document.createElement('div');
+            opt.className = 'custom-select-option';
+            opt.innerHTML = `<i class="fas fa-folder"></i> ${folder}`;
+            opt.onclick = () => { selectFolder(folder); toggleCustomMobileSelector(); };
+            dropdown.appendChild(opt);
+        });
+    }
+
+    // Add Tags
+    if (state.allTags.length > 0) {
+        const tagHeader = document.createElement('div');
+        tagHeader.className = 'custom-select-header';
+        tagHeader.textContent = 'Tags';
+        dropdown.appendChild(tagHeader);
+        
+        const tagsContainer = document.createElement('div');
+        tagsContainer.className = 'custom-select-tags-container';
+        
+        state.allTags.forEach(tag => {
+            const tagEl = document.createElement('span');
+            tagEl.className = 'tag-item';
+            tagEl.textContent = tag;
+            tagEl.onclick = () => { selectTag(tag); toggleCustomMobileSelector(); };
+            tagsContainer.appendChild(tagEl);
+        });
+        dropdown.appendChild(tagsContainer);
     }
 }
+
+let dragImage = null;
 
 function handleDragStart(e) {
     e.dataTransfer.setData('text/plain', e.target.dataset.noteId);

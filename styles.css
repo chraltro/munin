@@ -185,9 +185,20 @@ header h1 {
     cursor: pointer;
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 0.5rem;
     transition: all 0.3s;
     margin-bottom: 0.25rem;
+}
+
+.folder-item .folder-name {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-grow: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .folder-item:hover {
@@ -196,6 +207,30 @@ header h1 {
 
 .folder-item.active {
     background: var(--primary);
+    color: white;
+}
+
+.folder-item .delete-folder-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 4px;
+    opacity: 0.5;
+    transition: all 0.2s;
+}
+
+.folder-item:hover .delete-folder-btn {
+    opacity: 1;
+}
+
+.folder-item .delete-folder-btn:hover {
+    color: var(--danger);
+    background-color: rgba(239, 68, 68, 0.1);
+}
+
+.folder-item.active .delete-folder-btn {
     color: white;
 }
 
@@ -593,7 +628,7 @@ header h1 {
     }
 
     .notes-area {
-        padding-bottom: 70px; /* Space for fixed input bar */
+        padding-bottom: 70px; 
     }
 
     .input-bar {
@@ -601,7 +636,7 @@ header h1 {
         bottom: 0;
         left: 0;
         right: 0;
-        z-index: 400; /* Below editor but above main content */
+        z-index: 400; 
         border-top: 1px solid var(--border);
     }
 
@@ -622,7 +657,7 @@ header h1 {
     }
     
     .editor-panel:not(.header-collapsed) {
-        bottom: 70px; /* Make space for input bar when not in fullscreen */
+        bottom: 70px; 
         height: auto;
     }
 

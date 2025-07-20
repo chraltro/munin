@@ -8,7 +8,7 @@ let state = {
     geminiKey: '',
     githubToken: '',
     notes: [],
-    folders: ['Ideas', 'Recipes', 'Work', 'Personal', 'Archive'],
+    folders: ['Prompts', 'Recipes'],
     currentFolder: 'All Notes',
     currentNote: null,
     gistId: null
@@ -455,17 +455,33 @@ Now, analyze all the provided data and return the single JSON object for the cor
 
 function renderFolders() {
     folderList.innerHTML = `
-        <div class="folder-item ${state.currentFolder === 'All Notes' ? 'active' : ''}" 
-             onclick="selectFolder('All Notes')">
-            <i class="fas fa-folder"></i> All Notes
+        <div class="folder-item ${state.currentFolder === 'All Notes' ? 'active' : ''}" onclick="selectFolder('All Notes')">
+            <span class="folder-name">
+                <i class="fas fa-folder"></i> All Notes
+            </span>
         </div>
     `;
     state.folders.sort((a, b) => a.localeCompare(b));
     state.folders.forEach(folder => {
         const folderEl = document.createElement('div');
         folderEl.className = `folder-item ${state.currentFolder === folder ? 'active' : ''}`;
-        folderEl.innerHTML = `<i class="fas fa-folder"></i> ${folder}`;
         folderEl.onclick = () => selectFolder(folder);
+        
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'folder-name';
+        nameSpan.innerHTML = `<i class="fas fa-folder"></i> ${folder}`;
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-folder-btn';
+        deleteBtn.title = `Delete folder "${folder}"`;
+        deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+        deleteBtn.onclick = (e) => {
+            e.stopPropagation();
+            deleteFolder(folder);
+        };
+
+        folderEl.appendChild(nameSpan);
+        folderEl.appendChild(deleteBtn);
         folderList.appendChild(folderEl);
     });
 }
@@ -525,12 +541,32 @@ async function createNewFolder() {
     }
 }
 
+async function deleteFolder(folderName) {
+    if (confirm(`Are you sure you want to delete the folder "${folderName}"? This cannot be undone.`)) {
+        const isFolderEmpty = !state.notes.some(note => note.folder === folderName);
+        if (!isFolderEmpty) {
+            alert(`Error: Cannot delete folder "${folderName}" because it is not empty.`);
+            return;
+        }
+
+        state.folders = state.folders.filter(f => f !== folderName);
+        
+        if (state.currentFolder === folderName) {
+            selectFolder('All Notes');
+        } else {
+            renderFolders();
+        }
+
+        await saveData();
+    }
+}
+
 async function createNewNote() {
     const newNote = {
         id: Date.now(),
         title: 'New Note',
         content: '# New Note\n\nStart writing...',
-        folder: state.currentFolder === 'All Notes' ? state.folders[0] || 'Personal' : state.currentFolder,
+        folder: state.currentFolder === 'All Notes' ? state.folders[0] || 'Prompts' : state.currentFolder,
         created: new Date().toISOString(),
         modified: new Date().toISOString()
     };

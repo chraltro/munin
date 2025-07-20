@@ -1733,7 +1733,7 @@ function handleDragStart(e) {
     e.dataTransfer.setData('text/plain', e.target.dataset.noteId);
     e.dataTransfer.effectAllowed = 'move';
 
-    // Create a custom drag image that is solid and looks "picked up"
+    // Create a custom drag image. We're making it solid and simple for max browser compatibility.
     dragImage = e.target.cloneNode(true);
     dragImage.classList.remove('visible'); // remove animation classes
     dragImage.style.position = 'absolute';
@@ -1742,14 +1742,16 @@ function handleDragStart(e) {
     dragImage.style.height = `${e.target.offsetHeight}px`;
     dragImage.style.pointerEvents = 'none';
     dragImage.style.margin = '0';
-    dragImage.style.opacity = '1';
-    dragImage.style.transform = 'rotate(2deg) scale(1.02)';
-    dragImage.style.boxShadow = 'var(--shadow-xl)';
+    dragImage.style.opacity = '1'; // Make it solid
+    // Removing transform and shadow for better setDragImage compatibility
     document.body.appendChild(dragImage);
     e.dataTransfer.setDragImage(dragImage, e.offsetX, e.offsetY);
     
-    // Hide original element after a tick, so the drag image can be created from it
-    setTimeout(() => e.target.classList.add('is-dragging'), 0);
+    // Defer hiding the original element slightly to ensure the browser has time
+    // to snapshot it for the drag image.
+    setTimeout(() => {
+        e.target.classList.add('is-dragging');
+    }, 1);
 }
 
 function handleDragEnd(e) {

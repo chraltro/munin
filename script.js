@@ -40,6 +40,9 @@ const closeEditorBtn = document.getElementById('closeEditorBtn');
 const loadingOverlay = document.getElementById('loadingOverlay');
 const searchInput = document.getElementById('searchInput');
 const toggleHeaderBtn = document.getElementById('toggleHeaderBtn');
+const aiResponseModal = document.getElementById('aiResponseModal');
+const aiResponseOutput = document.getElementById('aiResponseOutput');
+const closeAiResponseBtn = document.getElementById('closeAiResponseBtn');
 
 document.addEventListener('DOMContentLoaded', () => {
     if (APP_CONFIG.passwordHash === '7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069') {
@@ -128,17 +131,23 @@ function setupEventListeners() {
     closeEditorBtn.addEventListener('click', closeEditor);
     searchInput.addEventListener('input', renderNotes);
     toggleHeaderBtn.addEventListener('click', toggleEditorHeader);
+    closeAiResponseBtn.addEventListener('click', () => aiResponseModal.style.display = 'none');
+    aiResponseModal.addEventListener('click', (e) => {
+        if (e.target === aiResponseModal) {
+            aiResponseModal.style.display = 'none';
+        }
+    });
 }
 
 function toggleEditorHeader() {
     editorPanel.classList.toggle('header-collapsed');
     const icon = toggleHeaderBtn.querySelector('i');
     if (editorPanel.classList.contains('header-collapsed')) {
-        icon.classList.remove('fa-compress-alt');
-        icon.classList.add('fa-expand-alt');
-    } else {
         icon.classList.remove('fa-expand-alt');
         icon.classList.add('fa-compress-alt');
+    } else {
+        icon.classList.remove('fa-compress-alt');
+        icon.classList.add('fa-expand-alt');
     }
 }
 
@@ -302,15 +311,20 @@ async function processCommand() {
     showLoading(true);
 
     try {
-        const intentPrompt = `Analyze the user's command and identify the primary intent and the title of the target note if applicable.
+        const intentPrompt = `Analyze the user's command to determine the intent.
+The user can create, update, or delete notes, or ask a general question.
 
 User Command: "${command}"
-Note Titles: ${JSON.stringify(state.notes.map(n => n.title))}
+Existing Note Titles: ${JSON.stringify(state.notes.map(n => n.title))}
 
-Respond in JSON with "intent" ("CREATE", "UPDATE", "DELETE", or "UNKNOWN") and "targetTitle".
+Respond in JSON.
+- For note actions, use "intent": "CREATE", "UPDATE", or "DELETE" and include "targetTitle".
+- For general questions, use "intent": "QUERY".
+- If the intent is unclear, use "intent": "UNKNOWN".
+
 Example for "delete my cookie recipe": {"intent": "DELETE", "targetTitle": "Chocolate Chip Cookie Recipe"}
 Example for "new idea for a cat-based dating app": {"intent": "CREATE", "targetTitle": null}
-Example for "add milk to my grocery list": {"intent": "UPDATE", "targetTitle": "Grocery List"}
+Example for "what is the capital of France?": {"intent": "QUERY", "targetTitle": null}
 `;
         const intentResult = await callGeminiAPI(intentPrompt, { temperature: 0.1, maxOutputTokens: 200 });
         
@@ -326,113 +340,66 @@ Example for "add milk to my grocery list": {"intent": "UPDATE", "targetTitle": "
         const { intent, targetTitle } = JSON.parse(intentJsonMatch[0]);
 
         console.log(`Intent Detected: ${intent}`, `Target: ${targetTitle || 'N/A'}`);
+        let shouldSave = false;
 
         switch (intent) {
+            case 'QUERY': {
+                showLoading(true, 'Finding an answer...');
+                const queryPrompt = `You are a helpful assistant. Provide a clear and concise answer to the following question. Format the response in Markdown.\n\nQuestion: "${command}"`;
+                const mainResult = await callGeminiAPI(queryPrompt, { temperature: 0.5, maxOutputTokens: 2048 });
+
+                if (!mainResult.candidates || mainResult.candidates.length === 0) {
+                    throw new Error("AI failed to provide an answer.");
+                }
+                const answerText = mainResult.candidates[0].content.parts[0].text;
+                aiResponseOutput.innerHTML = DOMPurify.sanitize(marked.parse(answerText));
+                aiResponseModal.style.display = 'flex';
+                break;
+            }
             case 'UPDATE': {
                 const noteToUpdate = state.notes.find(n => n.title === targetTitle);
                 if (!noteToUpdate) {
                     throw new Error(`Could not find a note titled "${targetTitle}" to update.`);
                 }
-
                 showLoading(true, 'Updating note...');
-                const updatePrompt = `You are an AI note editor. Update the following note based on the user's command.
-- Modify the text directly.
-- Respond with ONLY a single JSON object containing the full, updated content. Do not add explanations. If the user asks to add to the note, append the new content to the existing content - do not forget to keep the old content.
-- Suggest a new title if the existing one is not relevant.
-- If the user asks to change the title, update it accordingly.
-User Command: "${command}"
-
-Original Note Content to Update:
----
-${noteToUpdate.content}
----
-
-Response Format:
-{
-  "title": "Potentially updated title",
-  "content": "The full, updated note content in markdown."
-}`;
-
+                const updatePrompt = `You are an AI note editor. Update the following note based on the user's command. Respond with ONLY a single JSON object containing the full, updated "title" and "content".\n\nUser Command: "${command}"\n\nOriginal Note:\n---\n${JSON.stringify({title: noteToUpdate.title, content: noteToUpdate.content})}\n---`;
                 const mainResult = await callGeminiAPI(updatePrompt, { temperature: 0.5, maxOutputTokens: 8192 });
-
-                if (!mainResult.candidates || mainResult.candidates.length === 0) {
-                    throw new Error("AI response for note update is empty or invalid.");
-                }
+                if (!mainResult.candidates || mainResult.candidates.length === 0) throw new Error("AI response for note update is empty or invalid.");
                 const candidate = mainResult.candidates[0];
-                if (candidate.finishReason && candidate.finishReason !== "STOP") {
-                    throw new Error(`AI processing stopped unexpectedly. Reason: ${candidate.finishReason}.`);
-                }
-
+                if (candidate.finishReason && candidate.finishReason !== "STOP") throw new Error(`AI processing stopped unexpectedly. Reason: ${candidate.finishReason}.`);
                 const mainText = candidate.content.parts[0].text;
                 const payloadMatch = mainText.match(/\{[\s\S]*\}/);
-                if (!payloadMatch) {
-                    throw new Error("AI did not respond with valid JSON for the note update.");
-                }
+                if (!payloadMatch) throw new Error("AI did not respond with valid JSON for the note update.");
                 const payload = JSON.parse(payloadMatch[0]);
-
                 const noteIndex = state.notes.findIndex(n => n.id === noteToUpdate.id);
                 state.notes[noteIndex].title = payload.title || noteToUpdate.title;
                 state.notes[noteIndex].content = payload.content;
                 state.notes[noteIndex].modified = new Date().toISOString();
                 openNote(state.notes[noteIndex]);
+                shouldSave = true;
                 break;
             }
-
             case 'DELETE': {
                 const noteToDelete = state.notes.find(n => n.title === targetTitle);
-                if (!noteToDelete) {
-                    throw new Error(`Could not find a note titled "${targetTitle}" to delete.`);
-                }
+                if (!noteToDelete) throw new Error(`Could not find a note titled "${targetTitle}" to delete.`);
                 if (confirm(`Are you sure you want to delete the note: "${noteToDelete.title}"?`)) {
                     state.notes = state.notes.filter(n => n.id !== noteToDelete.id);
-                    if (state.currentNote && state.currentNote.id === noteToDelete.id) {
-                        closeEditor();
-                    }
+                    if (state.currentNote && state.currentNote.id === noteToDelete.id) closeEditor();
+                    shouldSave = true;
                 }
                 break;
             }
-
             case 'CREATE': {
                 showLoading(true, 'Creating note...');
-                const createPrompt = `You are a sophisticated AI assistant for a note-taking app. Your task is to process a user command to create a new note.
-
-1.  **Generate Content**: Based on the user command, generate the full note content in well-formatted markdown.
-2.  **Suggest Title**: Create a concise, relevant title for the note.
-3.  **Categorize**: Assign the note to the most appropriate folder from the provided list. You can suggest a new folder if none fit. Folder names MUST be in English.
-4.  **Language**: The 'title' and 'content' MUST be in the primary language of the user's command.
-
-User Command: "${command}"
-Existing Folders: ${JSON.stringify(state.folders)}
-
-Response Format: You MUST respond with ONLY a single, valid JSON object.
-{
-    "title": "A concise title in the same language as the command",
-    "content": "The full note content in well-formatted markdown...",
-    "folder": "The single best matching folder name (in English)",
-    "isNewFolder": false
-}`;
-                
+                const createPrompt = `Process a user command to create a new note. Respond with ONLY a single, valid JSON object with "title", "content", and "folder". Choose the folder from this list: ${JSON.stringify(state.folders)}\n\nUser Command: "${command}"`;
                 const mainResult = await callGeminiAPI(createPrompt, { temperature: 0.7, maxOutputTokens: 8192 });
-
-                if (!mainResult.candidates || mainResult.candidates.length === 0) {
-                    throw new Error("AI response for note creation is empty or invalid.");
-                }
+                if (!mainResult.candidates || mainResult.candidates.length === 0) throw new Error("AI response for note creation is empty or invalid.");
                 const candidate = mainResult.candidates[0];
-                if (candidate.finishReason && candidate.finishReason !== "STOP") {
-                    throw new Error(`AI processing stopped unexpectedly. Reason: ${candidate.finishReason}.`);
-                }
-                
+                if (candidate.finishReason && candidate.finishReason !== "STOP") throw new Error(`AI processing stopped unexpectedly. Reason: ${candidate.finishReason}.`);
                 const mainText = candidate.content.parts[0].text;
                 const payloadMatch = mainText.match(/\{[\s\S]*\}/);
-                if (!payloadMatch) {
-                    throw new Error("AI did not respond with valid JSON for the new note.");
-                }
+                if (!payloadMatch) throw new Error("AI did not respond with valid JSON for the new note.");
                 const payload = JSON.parse(payloadMatch[0]);
-
-                if (payload.isNewFolder && !state.folders.includes(payload.folder)) {
-                    state.folders.push(payload.folder);
-                    renderFolders();
-                }
                 const newNote = {
                     id: Date.now(),
                     title: payload.title,
@@ -443,16 +410,18 @@ Response Format: You MUST respond with ONLY a single, valid JSON object.
                 };
                 state.notes.push(newNote);
                 openNote(newNote);
+                shouldSave = true;
                 break;
             }
-
             default:
-                alert("I'm not sure what you mean. Please try rephrasing your command, for example: 'create a new note about...', 'update my note titled...', or 'delete the note about...'.");
+                alert("I'm not sure what you mean. Please try rephrasing your command, for example: 'create a new note about...', 'update my note titled...', 'delete the note about...', or ask a question like 'what is the tallest mountain?'.");
                 break;
         }
 
-        await saveData();
-        renderNotes();
+        if (shouldSave) {
+            await saveData();
+            renderNotes();
+        }
         commandInput.value = '';
 
     } catch (error) {

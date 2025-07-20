@@ -69,7 +69,7 @@
 
                 <!-- Input Bar -->
                 <div class="input-bar">
-                    <input type="text" id="commandInput" placeholder='Try: "Add a new idea: ..."'>
+                    <input type="text" id="commandInput" placeholder='Try: "Add a new idea: ..." or "Who was..."'>
                     <button id="processBtn" class="process-btn">
                         <i class="fas fa-magic"></i> Process
                     </button>
@@ -101,9 +101,17 @@
                 <textarea id="noteEditor" placeholder="Write your note in Markdown..." style="display: none;"></textarea>
                 <div id="notePreview" class="note-preview"></div>
                 <button id="toggleHeaderBtn" class="fab-btn" style="display: none;">
-                    <i class="fas fa-compress-alt"></i>
+                    <i class="fas fa-expand-alt"></i>
                 </button>
             </aside>
+        </div>
+
+        <!-- AI Response Modal -->
+        <div id="aiResponseModal" class="modal-overlay" style="display: none;">
+            <div class="modal-content">
+                <button id="closeAiResponseBtn" class="modal-close-btn">×</button>
+                <div id="aiResponseOutput" class="note-preview"></div>
+            </div>
         </div>
 
         <!-- Loading Overlay -->

@@ -308,149 +308,95 @@ async function processCommand() {
     const command = commandInput.value.trim();
     if (!command) return;
 
-    showLoading(true);
+    showLoading(true, 'Thinking...');
     let rawResponseForDebugging = '';
 
     try {
-        let contextNote = null;
-        let contextText = '';
+        const masterPrompt = `You are the intelligent engine for a note-taking app. Your task is to analyze a user's command and all their existing notes to determine the single correct action to take.
 
-        if (state.notes.length > 0) {
-            showLoading(true, 'Finding context...');
-            const relevancePrompt = `Given the user's command, which of the following note titles is the most relevant for providing context? Respond with ONLY the single, exact title in a JSON format like {"title": "The Note Title"} or {"title": null} if no note is relevant.\n\nUser Command: "${command}"\n\nNote Titles: ${JSON.stringify(state.notes.map(n => n.title))}`;
-            try {
-                const relevanceResult = await callGeminiAPI(relevancePrompt, { temperature: 0.0, maxOutputTokens: 200 });
-                if (relevanceResult.candidates && relevanceResult.candidates[0].content) {
-                    const relevanceText = relevanceResult.candidates[0].content.parts[0].text;
-                    const relevanceMatch = relevanceText.match(/\{[\s\S]*\}/);
-                    if (relevanceMatch) {
-                        const { title: relevantNoteTitle } = JSON.parse(relevanceMatch[0]);
-                        if (relevantNoteTitle) {
-                            contextNote = state.notes.find(n => n.title === relevantNoteTitle);
-                            if (contextNote) {
-                                console.log('Context found for command:', contextNote.title);
-                                contextText = `\n\nFor additional context, here is the content of the most relevant existing note:\n---CONTEXT NOTE---\nTitle: ${contextNote.title}\nContent: ${contextNote.content}\n---END CONTEXT NOTE---`;
-                            }
-                        }
-                    }
-                }
-            } catch (relevanceError) {
-                console.warn("Could not determine relevance, proceeding without context.", relevanceError);
-            }
-        }
-        
-        showLoading(true, 'Determining intent...');
-        const intentPrompt = `You are a strict command interpreter. Based on the user's command and any provided note context, determine the correct intent from this list: "CREATE", "UPDATE", "DELETE", or "QUERY".
-- If the command is to make something new (like a grocery list from a recipe), the intent is "CREATE".
-- If the command is to change an existing note, the intent is "UPDATE".
-- If the command is to remove a note, the intent is "DELETE".
-- If the command is a question asking for information, the intent is "QUERY".
-- You MUST respond with ONLY a single, valid JSON object and nothing else.
+You MUST respond with a single JSON object describing a "tool" to use and its "args".
+The available tools are: "CREATE_NOTE", "UPDATE_NOTE", "DELETE_NOTE", "ANSWER_QUESTION".
 
-User Command: "${command}"
-${contextText}
+Here is all the data you need:
 
-Respond with {"intent": "YourChoice", "targetTitle": "The Full Title of the Note to Act On"}.
-For CREATE, "targetTitle" can be null. For UPDATE/DELETE, "targetTitle" should be the title of the context note if provided.`;
-        const intentResult = await callGeminiAPI(intentPrompt, { temperature: 0.0, maxOutputTokens: 2048 });
+1. User's Command:
+"${command}"
 
-        if (!intentResult.candidates || !intentResult.candidates.length === 0) {
-            console.error("FATAL: AI response for intent contained no candidates. Full API Response:", intentResult);
+2. Existing Folders:
+${JSON.stringify(state.folders)}
+
+3. All Existing Notes (Title and Content):
+${JSON.stringify(state.notes.map(n => ({ title: n.title, content: n.content })))}
+
+---
+TOOL-USE INSTRUCTIONS:
+
+1. tool: "ANSWER_QUESTION"
+   - Use this if the command is a question that can be answered using the provided notes as context, or from general knowledge if no note is relevant.
+   - Example: "how much natron is in the chocolate cake?" -> Checks the "Chocolate Cake" note first.
+   - args: { "answer": "The full, markdown-formatted answer." }
+
+2. tool: "CREATE_NOTE"
+   - Use this to create a new note.
+   - If the command implies using an existing note (e.g., "make a grocery list for the pancakes"), USE THE CONTEXT FROM THAT NOTE to generate the new content.
+   - If the user specifies a new folder that doesn't exist, you MUST set "newFolder" to true.
+   - args: { "title": "New Note Title", "content": "Markdown content...", "folder": "Folder Name", "newFolder": true/false }
+
+3. tool: "UPDATE_NOTE"
+   - Use this to modify an existing note.
+   - args: { "targetTitle": "Full Title of Note to Update", "newTitle": "Updated Title", "newContent": "Full new content..." }
+
+4. tool: "DELETE_NOTE"
+   - Use this to delete an existing note.
+   - args: { "targetTitle": "Full Title of Note to Delete" }
+
+---
+Now, analyze all the provided data and return the single JSON object for the correct tool call. Do not include any other text or explanation.`;
+
+        const mainResult = await callGeminiAPI(masterPrompt, { temperature: 0.1, maxOutputTokens: 8192 });
+
+        if (!mainResult.candidates || !mainResult.candidates.length === 0) {
+            console.error("FATAL: AI response contained no candidates.", mainResult);
             throw new Error("AI response was empty or invalid. Check console.");
         }
-        const intentCandidate = intentResult.candidates[0];
-        if (!intentCandidate.content || !intentCandidate.content.parts) {
-            console.error("FATAL: AI candidate for intent is missing content. Full Candidate Object:", intentCandidate);
-            const reason = intentCandidate.finishReason || "UNKNOWN";
-            throw new Error(`AI did not return valid content for intent. Reason: ${reason}. Check console.`);
+        const candidate = mainResult.candidates[0];
+        if (!candidate.content || !candidate.content.parts) {
+            console.error("FATAL: AI candidate is missing content.", candidate);
+            const reason = candidate.finishReason || "UNKNOWN";
+            throw new Error(`AI did not return valid content. Reason: ${reason}. Check console.`);
         }
-        const intentTextResponse = intentCandidate.content.parts[0].text;
-        rawResponseForDebugging = intentTextResponse;
-        const intentJsonMatch = intentTextResponse.match(/\{[\s\S]*\}/);
-        if (!intentJsonMatch) {
-            console.error("FATAL: Could not find JSON in AI's intent response. Raw response was:", `\n---START---\n${rawResponseForDebugging}\n---END---`);
-            throw new Error("AI did not respond with valid JSON for intent. Check console.");
-        }
-        const { intent, targetTitle } = JSON.parse(intentJsonMatch[0]);
-        console.log(`Intent Detected: ${intent}`, `Target: ${targetTitle || 'N/A'}`);
 
+        const responseText = candidate.content.parts[0].text;
+        rawResponseForDebugging = responseText;
+
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+            console.error("FATAL: Could not find a JSON object in the AI's response. Raw response was:", `\n---START---\n${rawResponseForDebugging}\n---END---`);
+            throw new Error("AI did not respond with a valid JSON object. Check console for its raw response.");
+        }
+
+        const { tool, args } = JSON.parse(jsonMatch[0]);
+        console.log(`AI chose tool: ${tool}`, args);
         let shouldSave = false;
 
-        switch (intent) {
-            case 'QUERY': {
-                showLoading(true, 'Finding an answer...');
-                const queryPrompt = `You are a helpful assistant. Provide a clear and concise answer to the following question. Format the response in Markdown.${contextText}\n\nQuestion: "${command}"`;
-                const mainResult = await callGeminiAPI(queryPrompt, { temperature: 0.5, maxOutputTokens: 8192 });
-
-                if (!mainResult.candidates || !mainResult.candidates[0].content) throw new Error("AI failed to provide an answer.");
-                const answerText = mainResult.candidates[0].content.parts[0].text;
-
-                aiResponseOutput.innerHTML = DOMPurify.sanitize(marked.parse(answerText));
+        switch (tool) {
+            case 'ANSWER_QUESTION':
+                if (!args || !args.answer) throw new Error("AI chose ANSWER_QUESTION but provided no answer.");
+                aiResponseOutput.innerHTML = DOMPurify.sanitize(marked.parse(args.answer));
                 aiResponseModal.style.display = 'flex';
                 break;
-            }
-            case 'UPDATE': {
-                const noteToUpdate = state.notes.find(n => n.title === targetTitle);
-                if (!noteToUpdate) throw new Error(`Could not find a note titled "${targetTitle}" to update.`);
-                showLoading(true, 'Updating note...');
-                const updatePrompt = `You are an AI note editor. Update the note titled "${noteToUpdate.title}" based on the user's command. Respond with ONLY a single JSON object containing the full, updated "title" and "content".\n\nUser Command: "${command}"\n\nOriginal Note Content:\n---\n${noteToUpdate.content}\n---`;
-                const mainResult = await callGeminiAPI(updatePrompt, { temperature: 0.5, maxOutputTokens: 8192 });
 
-                if (!mainResult.candidates || !mainResult.candidates[0].content) throw new Error("AI failed to provide update content.");
-                const mainText = mainResult.candidates[0].content.parts[0].text;
-                rawResponseForDebugging = mainText;
-                const payloadMatch = mainText.match(/\{[\s\S]*\}/);
-                if (!payloadMatch) throw new Error("AI did not respond with valid JSON for the note update. Check console.");
-                const payload = JSON.parse(payloadMatch[0]);
-
-                const noteIndex = state.notes.findIndex(n => n.id === noteToUpdate.id);
-                state.notes[noteIndex].title = payload.title || noteToUpdate.title;
-                state.notes[noteIndex].content = payload.content;
-                state.notes[noteIndex].modified = new Date().toISOString();
-                openNote(state.notes[noteIndex]);
-                shouldSave = true;
-                break;
-            }
-            case 'DELETE': {
-                const noteToDelete = state.notes.find(n => n.title === targetTitle);
-                if (!noteToDelete) throw new Error(`Could not find a note titled "${targetTitle}" to delete.`);
-                if (confirm(`Are you sure you want to delete the note: "${noteToDelete.title}"?`)) {
-                    state.notes = state.notes.filter(n => n.id !== noteToDelete.id);
-                    if (state.currentNote && state.currentNote.id === noteToDelete.id) closeEditor();
-                    shouldSave = true;
-                }
-                break;
-            }
-            case 'CREATE': {
-                showLoading(true, 'Creating note...');
-                const createPrompt = `You are an AI assistant. Your task is to create a new note based on the user's command.
-- Crucially, if the command requires information from an existing note, I have provided that note's content as context below. Use it to fulfill the command (e.g., creating a grocery list from a recipe).
-- If the command is for a brand new, unrelated topic, ignore the context and create the note from scratch.
-- Choose the most appropriate folder for the new note from this list: ${JSON.stringify(state.folders)}.
-
-User Command: "${command}"
-${contextText}
-
-Respond with ONLY a single, valid JSON object with "title", "content", and "folder".`;
-                const mainResult = await callGeminiAPI(createPrompt, { temperature: 0.7, maxOutputTokens: 8192 });
-
-                if (!mainResult.candidates || !mainResult.candidates[0].content) throw new Error("AI failed to provide creation content.");
-                const mainText = mainResult.candidates[0].content.parts[0].text;
-                rawResponseForDebugging = mainText;
-                const payloadMatch = mainText.match(/\{[\s\S]*\}/);
-                if (!payloadMatch) throw new Error("AI did not respond with valid JSON for the new note. Check console.");
-                const payload = JSON.parse(payloadMatch[0]);
-
-                if (payload.folder && !state.folders.includes(payload.folder)) {
-                    state.folders.push(payload.folder);
+            case 'CREATE_NOTE':
+                if (!args || !args.title || !args.content || !args.folder) throw new Error("AI chose CREATE_NOTE with incomplete arguments.");
+                if (args.newFolder && !state.folders.includes(args.folder)) {
+                    state.folders.push(args.folder);
                     renderFolders();
                 }
-
                 const newNote = {
                     id: Date.now(),
-                    title: payload.title,
-                    content: payload.content,
-                    folder: payload.folder || 'Personal',
+                    title: args.title,
+                    content: args.content,
+                    folder: args.folder,
                     created: new Date().toISOString(),
                     modified: new Date().toISOString()
                 };
@@ -458,8 +404,34 @@ Respond with ONLY a single, valid JSON object with "title", "content", and "fold
                 openNote(newNote);
                 shouldSave = true;
                 break;
-            }
+
+            case 'UPDATE_NOTE':
+                if (!args || !args.targetTitle || !args.newContent) throw new Error("AI chose UPDATE_NOTE with incomplete arguments.");
+                const noteIndex = state.notes.findIndex(n => n.title === args.targetTitle);
+                if (noteIndex === -1) throw new Error(`AI tried to update a note titled "${args.targetTitle}" which does not exist.`);
+                
+                state.notes[noteIndex].title = args.newTitle || args.targetTitle;
+                state.notes[noteIndex].content = args.newContent;
+                state.notes[noteIndex].modified = new Date().toISOString();
+                
+                openNote(state.notes[noteIndex]);
+                shouldSave = true;
+                break;
+
+            case 'DELETE_NOTE':
+                if (!args || !args.targetTitle) throw new Error("AI chose DELETE_NOTE with incomplete arguments.");
+                const noteToDelete = state.notes.find(n => n.title === args.targetTitle);
+                if (!noteToDelete) throw new Error(`AI tried to delete a note titled "${args.targetTitle}" which does not exist.`);
+                
+                if (confirm(`Are you sure you want to delete the note: "${noteToDelete.title}"?`)) {
+                    state.notes = state.notes.filter(n => n.id !== noteToDelete.id);
+                    if (state.currentNote && state.currentNote.id === noteToDelete.id) closeEditor();
+                    shouldSave = true;
+                }
+                break;
+
             default:
+                console.error("AI returned an unknown tool:", tool);
                 alert("The AI returned an unknown command. Please try rephrasing.");
                 break;
         }

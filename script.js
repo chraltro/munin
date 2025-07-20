@@ -1,6 +1,17 @@
+// --- DEBOUNCE UTILITY ---
+function debounce(func, delay) {
+    let timeout;
+    return function(...args) {
+        const context = this;
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(context, args), delay);
+    };
+}
+
 const APP_CONFIG = {
     passwordHash: '7f72131af35c82819bb44f256e34419f381fdeb465b1727d153b58030fabbcb7',
-    gistFilename: 'chrisidian-notes.json'
+    gistFilename: 'chrisidian-notes.json',
+    embeddingModel: 'text-embedding-004' // Google's latest embedding model
 };
 
 let state = {
@@ -11,7 +22,9 @@ let state = {
     folders: ['Prompts', 'Recipes'],
     currentFolder: 'All Notes',
     currentNote: null,
-    gistId: null
+    gistId: null,
+    isNoteDirty: false,
+    originalNoteContent: '' // Used to check if content changed for embedding
 };
 
 const THEMES = [
@@ -32,6 +45,25 @@ const THEMES = [
     { name: 'Monochrome', className: 'theme-monochrome', gradient: ['#a1a1aa', '#71717a'] },
     { name: 'Bronze', className: 'theme-bronze', gradient: ['#b45309', '#92400e'] },
 ];
+
+const FONTS = [
+    { name: 'Inter', family: "'Inter', sans-serif" },
+    { name: 'Roboto', family: "'Roboto', sans-serif" },
+    { name: 'Open Sans', family: "'Open Sans', sans-serif" },
+    { name: 'Lato', family: "'Lato', sans-serif" },
+    { name: 'Nunito', family: "'Nunito', sans-serif" },
+    { name: 'Merriweather', family: "'Merriweather', serif" },
+    { name: 'Lora', family: "'Lora', serif" },
+    { name: 'Source Serif Pro', family: "'Source Serif Pro', serif" },
+    { name: 'Fira Code', family: "'Fira Code', monospace" },
+    { name: 'JetBrains Mono', family: "'JetBrains Mono', monospace" }
+];
+
+let userPreferences = {
+    fontFamily: FONTS[0].family,
+    fontSize: '16px',
+    lineHeight: '1.6'
+};
 
 const loginScreen = document.getElementById('loginScreen');
 const mainApp = document.getElementById('mainApp');
@@ -63,11 +95,19 @@ const aiResponseModal = document.getElementById('aiResponseModal');
 const aiResponseOutput = document.getElementById('aiResponseOutput');
 const closeAiResponseBtn = document.getElementById('closeAiResponseBtn');
 const changeThemeBtn = document.getElementById('changeThemeBtn');
-const themeSwitcherContainer = document.getElementById('themeSwitcherContainer');
 const themeModal = document.getElementById('themeModal');
 const themeModalGrid = document.getElementById('themeModalGrid');
 const closeThemeModalBtn = document.getElementById('closeThemeModalBtn');
 const mobileFolderSelector = document.getElementById('mobileFolderSelector');
+
+const fontFamilySelector = document.getElementById('fontFamilySelector');
+const fontSizeSlider = document.getElementById('fontSizeSlider');
+const fontSizeValue = document.getElementById('fontSizeValue');
+const lineHeightSlider = document.getElementById('lineHeightSlider');
+const lineHeightValue = document.getElementById('lineHeightValue');
+
+const debouncedSave = debounce(() => saveCurrentNote(), 2000);
+const SAVE_BUTTON_DEFAULT_HTML = '<i class="fas fa-save"></i> Save';
 
 document.addEventListener('DOMContentLoaded', () => {
     if (APP_CONFIG.passwordHash === '7f72131af35c82819bb44f256e34419f381fdeb465b1727d153b58030fabbcb7') {
@@ -76,6 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (warning) warning.style.display = 'block';
     }
     loadTheme();
+    loadTypography();
     checkAutoLogin();
     setupEventListeners();
 });
@@ -135,6 +176,7 @@ function showMainApp() {
     mainApp.style.display = 'flex';
     renderFolders();
     renderThemeSwitchers();
+    renderFontSelector();
     testGeminiAPI().then(result => {
         if (result && result.candidates) {
             console.log('✅ Gemini API is working');
@@ -170,6 +212,19 @@ function setupEventListeners() {
         if (e.target === themeModal) themeModal.style.display = 'none';
     });
     mobileFolderSelector.addEventListener('change', (e) => selectFolder(e.target.value));
+
+    fontFamilySelector.addEventListener('change', handleFontChange);
+    fontSizeSlider.addEventListener('input', handleFontSizeChange);
+    lineHeightSlider.addEventListener('input', handleLineHeightChange);
+
+    noteTitle.addEventListener('input', () => {
+        setDirtyState(true);
+        debouncedSave();
+    });
+    noteEditor.addEventListener('input', () => {
+        setDirtyState(true);
+        debouncedSave();
+    });
 }
 
 function toggleEditorHeader() {
@@ -308,7 +363,6 @@ async function callGeminiAPI(prompt, generationConfig) {
 
     for (const model of modelsToTry) {
         try {
-            console.log(`Attempting to use model: ${model}`);
             const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${state.geminiKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -319,7 +373,6 @@ async function callGeminiAPI(prompt, generationConfig) {
             });
 
             if (response.ok) {
-                console.log(`✅ Successfully used model: ${model}`);
                 return await response.json();
             }
 
@@ -337,6 +390,60 @@ async function callGeminiAPI(prompt, generationConfig) {
     throw new Error(`All API models failed. Last error: ${lastError}`);
 }
 
+async function callEmbeddingAPI(text) {
+    try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${APP_CONFIG.embeddingModel}:embedContent?key=${state.geminiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model: `models/${APP_CONFIG.embeddingModel}`, content: { parts: [{ text }] } })
+        });
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(`Embedding API error: ${errorData.error.message}`);
+        }
+        const data = await response.json();
+        return data.embedding.values;
+    } catch (error) {
+        console.error("Embedding generation failed:", error);
+        return null;
+    }
+}
+
+function cosineSimilarity(vecA, vecB) {
+    if (!vecA || !vecB || vecA.length !== vecB.length) {
+        return 0;
+    }
+    const dotProduct = vecA.reduce((sum, a, i) => sum + a * vecB[i], 0);
+    const magnitudeA = Math.sqrt(vecA.reduce((sum, a) => sum + a * a, 0));
+    const magnitudeB = Math.sqrt(vecB.reduce((sum, b) => sum + b * b, 0));
+    if (magnitudeA === 0 || magnitudeB === 0) {
+        return 0;
+    }
+    return dotProduct / (magnitudeA * magnitudeB);
+}
+
+async function findSemanticallyRelevantNotes(command, maxNotes = 5) {
+    console.log("Finding relevant notes using semantic search...");
+    const commandEmbedding = await callEmbeddingAPI(command);
+    if (!commandEmbedding) {
+        console.warn("Could not generate embedding for command. No relevant notes found.");
+        return [];
+    }
+
+    const scoredNotes = state.notes
+        .filter(note => note.embedding && note.embedding.length > 0)
+        .map(note => ({
+            note,
+            score: cosineSimilarity(commandEmbedding, note.embedding)
+        }));
+
+    const sortedNotes = scoredNotes.sort((a, b) => b.score - a.score);
+
+    console.log("Top scoring notes:", sortedNotes.slice(0, maxNotes).map(n => ({title: n.note.title, score: n.score})));
+    return sortedNotes.slice(0, maxNotes).map(item => item.note);
+}
+
+
 async function processCommand() {
     const command = commandInput.value.trim();
     if (!command) return;
@@ -345,7 +452,10 @@ async function processCommand() {
     let rawResponseForDebugging = '';
 
     try {
-        const masterPrompt = `You are the intelligent engine for a note-taking app. Your task is to analyze a user's command and all their existing notes to determine the single correct action to take.
+        const relevantNotes = await findSemanticallyRelevantNotes(command);
+        console.log(`Sending ${relevantNotes.length} most relevant notes to AI for context.`);
+
+        const masterPrompt = `You are the intelligent engine for a note-taking app. Your task is to analyze a user's command and their most relevant notes to determine the single correct action to take.
 
 You MUST respond with a single JSON object describing a "tool" to use and its "args".
 The available tools are: "CREATE_NOTE", "UPDATE_NOTE", "DELETE_NOTE", "ANSWER_QUESTION".
@@ -358,14 +468,14 @@ Here is all the data you need:
 2. Existing Folders:
 ${JSON.stringify(state.folders)}
 
-3. All Existing Notes (Title and Content):
-${JSON.stringify(state.notes.map(n => ({ title: n.title, content: n.content })))}
+3. Relevant Existing Notes (Title and Content):
+${JSON.stringify(relevantNotes.map(n => ({ title: n.title, content: n.content })))}
 
 ---
 TOOL-USE INSTRUCTIONS:
 
 1. tool: "ANSWER_QUESTION"
-   - Use this if the command is a question that can be answered using the provided notes as context, or from general knowledge if no note is relevant.
+   - Use this if the command is a question that can be answered using the provided notes as context, or from general knowledge if no note is relevant. If no notes seem relevant, say you couldn't find an answer in the notes.
    - Example: "how much natron is in the chocolate cake?" -> Checks the "Chocolate Cake" note first.
    - args: { "answer": "The full, markdown-formatted answer." }
 
@@ -376,11 +486,11 @@ TOOL-USE INSTRUCTIONS:
    - args: { "title": "New Note Title", "content": "Markdown content...", "folder": "Folder Name", "newFolder": true/false }
 
 3. tool: "UPDATE_NOTE"
-   - Use this to modify an existing note.
+   - Use this to modify an existing note. Identify the note to update from the 'Relevant Existing Notes'.
    - args: { "targetTitle": "Full Title of Note to Update", "newTitle": "Updated Title", "newContent": "Full new content..." }
 
 4. tool: "DELETE_NOTE"
-   - Use this to delete an existing note.
+   - Use this to delete an existing note. Identify the note to delete from the 'Relevant Existing Notes'.
    - args: { "targetTitle": "Full Title of Note to Delete" }
 
 ---
@@ -431,7 +541,8 @@ Now, analyze all the provided data and return the single JSON object for the cor
                     content: args.content,
                     folder: args.folder,
                     created: new Date().toISOString(),
-                    modified: new Date().toISOString()
+                    modified: new Date().toISOString(),
+                    embedding: await callEmbeddingAPI(`${args.title}\n${args.content}`)
                 };
                 state.notes.push(newNote);
                 openNote(newNote);
@@ -446,6 +557,7 @@ Now, analyze all the provided data and return the single JSON object for the cor
                 state.notes[noteIndex].title = args.newTitle || args.targetTitle;
                 state.notes[noteIndex].content = args.newContent;
                 state.notes[noteIndex].modified = new Date().toISOString();
+                state.notes[noteIndex].embedding = await callEmbeddingAPI(`${state.notes[noteIndex].title}\n${state.notes[noteIndex].content}`);
                 
                 openNote(state.notes[noteIndex]);
                 shouldSave = true;
@@ -487,7 +599,6 @@ Now, analyze all the provided data and return the single JSON object for the cor
 }
 
 function renderFolders() {
-    // ---- Desktop List Rendering ----
     folderList.innerHTML = `
         <div class="folder-item ${state.currentFolder === 'All Notes' ? 'active' : ''}" onclick="selectFolder('All Notes')">
             <span class="folder-name">
@@ -519,7 +630,6 @@ function renderFolders() {
         folderList.appendChild(folderEl);
     });
 
-    // ---- Mobile Dropdown Rendering ----
     mobileFolderSelector.innerHTML = `<option value="All Notes">All Notes</option>`;
     state.folders.forEach(folder => {
         const option = document.createElement('option');
@@ -606,13 +716,17 @@ async function deleteFolder(folderName) {
 }
 
 async function createNewNote() {
+    const newContent = '# New Note\n\nStart writing...';
+    const newEmbedding = await callEmbeddingAPI(newContent);
+
     const newNote = {
         id: Date.now(),
         title: 'New Note',
-        content: '# New Note\n\nStart writing...',
+        content: newContent,
         folder: state.currentFolder === 'All Notes' ? state.folders[0] || 'Prompts' : state.currentFolder,
         created: new Date().toISOString(),
-        modified: new Date().toISOString()
+        modified: new Date().toISOString(),
+        embedding: newEmbedding
     };
     state.notes.push(newNote);
     try {
@@ -630,8 +744,10 @@ function openNote(note) {
     state.currentNote = note;
     noteTitle.value = note.title;
     noteEditor.value = note.content;
+    state.originalNoteContent = note.content;
     editorPanel.style.display = 'flex';
     setEditorMode('preview');
+    setDirtyState(false); 
     if (window.innerWidth <= 768) {
         toggleHeaderBtn.style.display = 'flex';
     }
@@ -640,8 +756,10 @@ function openNote(note) {
 function closeEditor() {
     editorPanel.style.display = 'none';
     state.currentNote = null;
+    state.originalNoteContent = '';
     toggleHeaderBtn.style.display = 'none';
     editorPanel.classList.remove('header-collapsed');
+    setDirtyState(false);
 }
 
 function setEditorMode(mode) {
@@ -660,22 +778,43 @@ function setEditorMode(mode) {
     }
 }
 
+function setDirtyState(isDirty) {
+    state.isNoteDirty = isDirty;
+    saveNoteBtn.classList.toggle('is-dirty', isDirty);
+}
+
 async function saveCurrentNote() {
     if (!state.currentNote) return;
+
     const noteIndex = state.notes.findIndex(n => n.id === state.currentNote.id);
-    if (noteIndex !== -1) {
-        state.notes[noteIndex].title = noteTitle.value;
-        state.notes[noteIndex].content = noteEditor.value;
-        state.notes[noteIndex].modified = new Date().toISOString();
-        state.currentNote = state.notes[noteIndex];
+    if (noteIndex === -1) return;
+
+    const newTitle = noteTitle.value;
+    const newContent = noteEditor.value;
+    const titleHasChanged = newTitle !== state.notes[noteIndex].title;
+    const contentHasChanged = newContent !== state.originalNoteContent;
+
+    state.notes[noteIndex].title = newTitle;
+    state.notes[noteIndex].content = newContent;
+    state.notes[noteIndex].modified = new Date().toISOString();
+
+    if (contentHasChanged || titleHasChanged || !state.notes[noteIndex].embedding) {
+        console.log("Content or title changed, or embedding missing. Regenerating embedding...");
+        const newEmbedding = await callEmbeddingAPI(`${newTitle}\n${newContent}`);
+        state.notes[noteIndex].embedding = newEmbedding;
     }
+    
+    // *** BUG FIX: Always update originalNoteContent after any successful save ***
+    state.originalNoteContent = newContent; 
+    state.currentNote = state.notes[noteIndex];
+    
     await saveData();
     renderNotes();
-    const saveBtn = document.getElementById('saveNoteBtn');
-    const originalText = saveBtn.innerHTML;
-    saveBtn.innerHTML = '<i class="fas fa-check"></i> Saved!';
+    setDirtyState(false); 
+    
+    saveNoteBtn.innerHTML = '<i class="fas fa-check"></i> Saved!';
     setTimeout(() => {
-        saveBtn.innerHTML = originalText;
+        saveNoteBtn.innerHTML = SAVE_BUTTON_DEFAULT_HTML;
     }, 2000);
 }
 
@@ -722,10 +861,6 @@ function applyTheme(themeClassName) {
     document.documentElement.className = '';
     document.documentElement.classList.add(themeClassName);
     localStorage.setItem('chrisidian_theme', themeClassName);
-
-    document.querySelectorAll('.theme-swatch').forEach(swatch => {
-        swatch.classList.toggle('active', swatch.dataset.theme === themeClassName);
-    });
 }
 
 function loadTheme() {
@@ -734,32 +869,83 @@ function loadTheme() {
 }
 
 function renderThemeSwitchers() {
-    themeSwitcherContainer.innerHTML = '';
     themeModalGrid.innerHTML = '';
     THEMES.forEach(theme => {
         const gradientCss = `linear-gradient(135deg, ${theme.gradient[0]}, ${theme.gradient[1]})`;
-
-        const swatch = document.createElement('button');
-        swatch.className = 'theme-swatch';
-        swatch.dataset.theme = theme.className;
-        swatch.title = theme.name;
-        swatch.style.backgroundImage = gradientCss;
-        swatch.onclick = () => applyTheme(theme.className);
-        themeSwitcherContainer.appendChild(swatch);
-
         const card = document.createElement('div');
         card.className = 'theme-card';
+        card.title = theme.name;
         card.onclick = () => {
             applyTheme(theme.className);
             themeModal.style.display = 'none';
         };
-        card.innerHTML = `
-            <div class="theme-card-swatch" style="background-image: ${gradientCss};"></div>
-            <span>${theme.name}</span>
-        `;
+        card.innerHTML = `<div class="theme-card-swatch" style="background-image: ${gradientCss};"></div>`;
         themeModalGrid.appendChild(card);
     });
-    const currentTheme = localStorage.getItem('chrisidian_theme') || 'theme-dusk';
-    const activeSwatch = themeSwitcherContainer.querySelector(`[data-theme="${currentTheme}"]`);
-    if (activeSwatch) activeSwatch.classList.add('active');
+}
+
+function applyTypography(prefs) {
+    document.documentElement.style.setProperty('--user-font-family', prefs.fontFamily);
+    document.documentElement.style.setProperty('--user-font-size', prefs.fontSize);
+    document.documentElement.style.setProperty('--user-line-height', prefs.lineHeight);
+}
+
+function saveTypography() {
+    localStorage.setItem('chrisidian_typography', JSON.stringify(userPreferences));
+}
+
+function loadTypography() {
+    const savedPrefs = localStorage.getItem('chrisidian_typography');
+    if (savedPrefs) {
+        userPreferences = JSON.parse(savedPrefs);
+    }
+    applyTypography(userPreferences);
+    updateTypographyControls();
+}
+
+function renderFontSelector() {
+    fontFamilySelector.innerHTML = '';
+    const sortedFonts = [...FONTS].sort((a, b) => a.name.localeCompare(b.name));
+    
+    sortedFonts.forEach(font => {
+        const option = document.createElement('option');
+        option.value = font.family;
+        option.textContent = font.name;
+        option.style.fontFamily = font.family;
+        fontFamilySelector.appendChild(option);
+    });
+}
+
+function updateTypographyControls() {
+    fontFamilySelector.value = userPreferences.fontFamily;
+    
+    const size = parseInt(userPreferences.fontSize, 10);
+    fontSizeSlider.value = size;
+    fontSizeValue.textContent = `${size}px`;
+
+    const height = parseFloat(userPreferences.lineHeight);
+    lineHeightSlider.value = height;
+    lineHeightValue.textContent = height.toFixed(1);
+}
+
+function handleFontChange(e) {
+    userPreferences.fontFamily = e.target.value;
+    applyTypography(userPreferences);
+    saveTypography();
+}
+
+function handleFontSizeChange(e) {
+    const size = e.target.value;
+    userPreferences.fontSize = `${size}px`;
+    fontSizeValue.textContent = `${size}px`;
+    applyTypography(userPreferences);
+    saveTypography();
+}
+
+function handleLineHeightChange(e) {
+    const height = e.target.value;
+    userPreferences.lineHeight = height;
+    lineHeightValue.textContent = parseFloat(height).toFixed(1);
+    applyTypography(userPreferences);
+    saveTypography();
 }

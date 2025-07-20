@@ -1,4 +1,3 @@
-// --- DEBOUNCE UTILITY ---
 function debounce(func, delay) {
     let timeout;
     return function(...args) {
@@ -11,7 +10,7 @@ function debounce(func, delay) {
 const APP_CONFIG = {
     passwordHash: '7f72131af35c82819bb44f256e34419f381fdeb465b1727d153b58030fabbcb7',
     gistFilename: 'chrisidian-notes.json',
-    embeddingModel: 'text-embedding-004' // Google's latest embedding model
+    embeddingModel: 'text-embedding-004'
 };
 
 let state = {
@@ -24,7 +23,7 @@ let state = {
     currentNote: null,
     gistId: null,
     isNoteDirty: false,
-    originalNoteContent: '', // Used to check if content changed for embedding
+    originalNoteContent: '',
     isSemanticSearching: false,
     saveTimeout: null
 };
@@ -224,9 +223,9 @@ function setupEventListeners() {
     
     aiResponseOutput.addEventListener('click', (e) => {
         const link = e.target.closest('a');
-        if (link && link.getAttribute('href')?.startsWith('app://note/')) {
+        if (link && link.dataset.noteId) {
             e.preventDefault();
-            const noteId = parseInt(link.getAttribute('href').split('/').pop(), 10);
+            const noteId = parseInt(link.dataset.noteId, 10);
             const noteToOpen = state.notes.find(n => n.id === noteId);
             if (noteToOpen) {
                 openNote(noteToOpen);
@@ -475,6 +474,11 @@ async function findSemanticallyRelevantNotes(command, maxNotes = 5) {
     return sortedNotes.slice(0, maxNotes).map(item => item.note);
 }
 
+function renderSanitizedHTML(markdownContent) {
+    let html = marked.parse(markdownContent);
+    html = html.replace(/href="app:\/\/note\/(\d+)"/g, 'href="#" data-note-id="$1"');
+    return DOMPurify.sanitize(html);
+}
 
 async function processCommand() {
     const command = commandInput.value.trim();
@@ -557,10 +561,7 @@ Now, analyze all the provided data and return the single JSON object for the cor
         switch (tool) {
             case 'ANSWER_QUESTION':
                 if (!args || !args.answer) throw new Error("AI chose ANSWER_QUESTION but provided no answer.");
-                const sanitizedHtml = DOMPurify.sanitize(marked.parse(args.answer), {
-                    ALLOWED_SCHEMES: [...DOMPurify.defaults.ALLOWED_SCHEMES, 'app']
-                });
-                aiResponseOutput.innerHTML = sanitizedHtml;
+                aiResponseOutput.innerHTML = renderSanitizedHTML(args.answer);
                 aiResponseModal.style.display = 'flex';
                 break;
 
@@ -848,11 +849,7 @@ function setEditorMode(mode) {
         notePreview.style.display = 'block';
         editModeBtn.classList.remove('active');
         previewModeBtn.classList.add('active');
-        const html = marked.parse(noteEditor.value);
-        const sanitizedHtml = DOMPurify.sanitize(html, {
-            ALLOWED_SCHEMES: [...DOMPurify.defaults.ALLOWED_SCHEMES, 'app']
-        });
-        notePreview.innerHTML = sanitizedHtml;
+        notePreview.innerHTML = renderSanitizedHTML(noteEditor.value);
     }
 }
 

@@ -555,13 +555,24 @@ async function loadData() {
             });
             
             const data = await gistData.json();
-            const content = JSON.parse(data.files[APP_CONFIG.gistFilename].content);
-            state.notes = content.notes || [];
-            state.folders = content.folders || state.folders;
-            // Ensure all notes have a tags array for backward compatibility
+            const mainContent = JSON.parse(data.files[APP_CONFIG.gistFilename].content);
+            state.notes = mainContent.notes || [];
+            state.folders = mainContent.folders || state.folders;
+
+            let embeddings = {};
+            if (data.files[APP_CONFIG.embeddingFilename]) {
+                embeddings = JSON.parse(data.files[APP_CONFIG.embeddingFilename].content);
+            }
+
+            // Ensure all notes have a tags array and merge embeddings
             state.notes.forEach(note => {
                 if (!note.tags) {
                     note.tags = [];
+                }
+                // If embeddings file exists, use it as source of truth.
+                // Otherwise, legacy embeddings might be on the note object itself.
+                if (embeddings[note.id]) {
+                    note.embedding = embeddings[note.id];
                 }
             });
             updateAllTags();
@@ -583,8 +594,18 @@ async function loadData() {
 
 async function saveData() {
     try {
-        const data = {
-            notes: state.notes,
+        const embeddingsToSave = {};
+        const notesToSave = state.notes.map(note => {
+            if (note.embedding && note.embedding.length > 0) {
+                embeddingsToSave[note.id] = note.embedding;
+            }
+            // Create a new object without the embedding property
+            const { embedding, ...noteWithoutEmbedding } = note;
+            return noteWithoutEmbedding;
+        });
+
+        const mainData = {
+            notes: notesToSave,
             folders: state.folders,
             lastUpdated: new Date().toISOString()
         };
@@ -592,7 +613,10 @@ async function saveData() {
         const gistData = {
             files: {
                 [APP_CONFIG.gistFilename]: {
-                    content: JSON.stringify(data, null, 2)
+                    content: JSON.stringify(mainData, null, 2)
+                },
+                [APP_CONFIG.embeddingFilename]: {
+                    content: JSON.stringify(embeddingsToSave, null, 2)
                 }
             },
             public: false

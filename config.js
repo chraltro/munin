@@ -1,6 +1,7 @@
 const APP_CONFIG = {
     passwordHash: '7f72131af35c82819bb44f256e34419f381fdeb465b1727d153b58030fabbcb7',
     gistFilename: 'chrisidian-notes.json',
+    embeddingFilename: 'chrisidian-notes-embeddings.json',
     embeddingModel: 'text-embedding-004',
     templateFolder: 'Templates'
 };

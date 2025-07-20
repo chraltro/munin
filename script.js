@@ -2165,9 +2165,29 @@ function renderAutocomplete() {
     container.children[0]?.classList.add('active');
 
     const coords = getCaretCoordinates(elements.noteEditor, elements.noteEditor.selectionStart);
-    container.style.top = `${coords.top + coords.height}px`;
-    container.style.left = `${coords.left}px`;
+    const editorPanelRect = elements.editorPanel.getBoundingClientRect();
+    
+    // Temporarily show to measure its width without causing a flicker
+    container.style.visibility = 'hidden';
     container.style.display = 'block';
+    const containerWidth = container.offsetWidth;
+    
+    container.style.top = `${coords.top + coords.height}px`;
+    
+    // Check if the container would overflow the editor panel's width
+    // 24px is an approximation for 1.5rem padding
+    if (coords.left + containerWidth + 24 > editorPanelRect.width) {
+        // It overflows, so align it to the right edge of the editor panel
+        container.style.left = 'auto';
+        container.style.right = '1.5rem';
+    } else {
+        // It fits, so align it to the caret's left position
+        container.style.left = `${coords.left}px`;
+        container.style.right = 'auto';
+    }
+    
+    // Make it visible now that it's positioned correctly
+    container.style.visibility = 'visible';
 }
 
 function hideAutocomplete() {

@@ -327,7 +327,8 @@ body {
 }
 
 .icon-btn {
-    display: flex;
+    display: inline-flex;
+    vertical-align: middle;
     align-items: center;
     justify-content: center;
     padding: 0.625rem;
@@ -640,8 +641,7 @@ body {
 }
 
 .view-switcher {
-    display: flex;
-    align-items: center;
+    /* Container for view mode buttons. The inline-flex on child buttons handles the layout. */
 }
 
 .view-switcher .icon-btn {

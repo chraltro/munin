@@ -1252,7 +1252,7 @@ body {
     transition: transform 0.2s ease-in-out;
 }
 
-.toolbar-ai-actions:hover > .toolbar-btn::after {
+.toolbar-ai-actions.is-open > .toolbar-btn::after {
     transform: rotate(180deg);
 }
 
@@ -1270,7 +1270,7 @@ body {
     border: 1px solid var(--border-light);
 }
 
-.toolbar-ai-actions:hover .toolbar-ai-actions-menu {
+.toolbar-ai-actions.is-open .toolbar-ai-actions-menu {
     display: block;
 }
 
@@ -1317,7 +1317,6 @@ body {
     position: absolute;
     top: -0.5rem;
     right: 100%;
-    margin-right: 5px;
     background-color: var(--bg-tertiary);
     min-width: 160px;
     box-shadow: var(--shadow-lg);

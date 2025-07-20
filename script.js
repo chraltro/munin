@@ -195,6 +195,7 @@ function setupEventListeners() {
     elements.noteEditor.addEventListener('input', handleNoteChange);
     elements.noteEditor.addEventListener('input', handleEditorAutocomplete);
     elements.noteEditor.addEventListener('keydown', handleEditorAutocompleteKeydown);
+    elements.aiActionsBtn.addEventListener('click', toggleAiActionsMenu);
     elements.aiActionsMenu.addEventListener('click', handleAiActionClick);
     elements.noteTagInput.addEventListener('keydown', handleTagInput);
     elements.currentFolderName.addEventListener('click', handleFolderNameClick);
@@ -206,6 +207,9 @@ function setupEventListeners() {
     document.addEventListener('click', (e) => {
         if (elements.customMobileSelector && !elements.customMobileSelector.contains(e.target)) {
             elements.customMobileSelector.classList.remove('is-open');
+        }
+        if (elements.aiActionsContainer && !elements.aiActionsContainer.contains(e.target)) {
+            elements.aiActionsContainer.classList.remove('is-open');
         }
     });
 
@@ -2083,6 +2087,11 @@ function renderNoteTags() {
 
 // --- Contextual AI Menu Logic ---
 
+function toggleAiActionsMenu(e) {
+    e.stopPropagation();
+    elements.aiActionsContainer.classList.toggle('is-open');
+}
+
 function populateAiActionsMenu() {
     elements.aiActionsMenu.innerHTML = `
         <button data-action="summarize" title="Summarize the selected text">Summarize</button>
@@ -2100,6 +2109,28 @@ function populateAiActionsMenu() {
         <div class="menu-separator"></div>
         <button data-action="cleanup" title="Apply best practice formatting or match template">Clean Up</button>
     `;
+
+    // Add positioning logic for nested dropdowns
+    const nestedDropdowns = elements.aiActionsMenu.querySelectorAll('.nested-dropdown');
+    nestedDropdowns.forEach(dropdown => {
+        dropdown.addEventListener('mouseover', (e) => {
+            const content = dropdown.querySelector('.nested-dropdown-content');
+            if (content) {
+                const rect = content.getBoundingClientRect();
+                if (rect.left < 0) {
+                    // It's off-screen to the left, so flip it to the right
+                    content.style.left = '100%';
+                    content.style.right = 'auto';
+                    content.style.marginLeft = '5px';
+                } else {
+                    // Reset to default styles in case it was flipped before
+                    content.style.left = 'auto';
+                    content.style.right = '100%';
+                    content.style.marginLeft = '0';
+                }
+            }
+        });
+    });
 }
 
 function handleSelectionChange() {
@@ -2120,6 +2151,7 @@ function handleAiActionClick(e) {
 
     if (action) {
         performContextualAIAction(action, tone);
+        elements.aiActionsContainer.classList.remove('is-open');
     }
 }
 

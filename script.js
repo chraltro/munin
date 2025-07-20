@@ -422,7 +422,7 @@ function toFraction(decimal) {
         }
     }
     
-    return parseFloat(decimal.toFixed(2)).toString().replace('.', ',');
+    return parseFloat(decimal.toFixed(1)).toString().replace('.', ',');
 }
 
 function parseQuantity(quantityStr) {

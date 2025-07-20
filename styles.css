@@ -2318,3 +2318,39 @@ body {
     --bg-primary: #fffbeb; --bg-secondary: #fef3c7; --bg-secondary-rgb: 254, 243, 199; --bg-tertiary: #fde68a; --bg-quaternary: #fcd34d;
     --text-primary: #78350f; --text-secondary: #92400e; --text-tertiary: #b45309; --border: #fde68a; --border-light: #fcd34d;
 }
+
+.theme-sakura {
+    --primary: #ff5d8f; --primary-dark: #ff2b6f; --primary-light: #ff8fab;
+    --bg-primary: #fffbff; --bg-secondary: #ffeff4; --bg-secondary-rgb: 255, 239, 244; --bg-tertiary: #ffe0e9; --bg-quaternary: #ffd1e0;
+    --text-primary: #5c2735; --text-secondary: #8c4b5f; --text-tertiary: #a56c7f; --border: #ffe0e9; --border-light: #ffd1e0;
+}
+
+.theme-tangerine {
+    --primary: #fb923c; --primary-dark: #f97316; --primary-light: #fdba74;
+    --bg-primary: #fff7ed; --bg-secondary: #ffedd5; --bg-secondary-rgb: 255, 237, 213; --bg-tertiary: #fed7aa; --bg-quaternary: #fecba1;
+    --text-primary: #78350f; --text-secondary: #9a3412; --text-tertiary: #b45309; --border: #fed7aa; --border-light: #fecba1;
+}
+
+.theme-kiwi {
+    --primary: #84cc16; --primary-dark: #65a30d; --primary-light: #a3e635;
+    --bg-primary: #f7fee7; --bg-secondary: #ecfccb; --bg-secondary-rgb: 236, 252, 203; --bg-tertiary: #d9f99d; --bg-quaternary: #bef264;
+    --text-primary: #365314; --text-secondary: #4d7c0f; --text-tertiary: #65a30d; --border: #d9f99d; --border-light: #bef264;
+}
+
+.theme-sky {
+    --primary: #38bdf8; --primary-dark: #0ea5e9; --primary-light: #7dd3fc;
+    --bg-primary: #f0f9ff; --bg-secondary: #e0f2fe; --bg-secondary-rgb: 224, 242, 254; --bg-tertiary: #bae6fd; --bg-quaternary: #7dd3fc;
+    --text-primary: #0c4a6e; --text-secondary: #0369a1; --text-tertiary: #075985; --border: #bae6fd; --border-light: #7dd3fc;
+}
+
+.theme-lavender {
+    --primary: #c084fc; --primary-dark: #a855f7; --primary-light: #d8b4fe;
+    --bg-primary: #fbfaff; --bg-secondary: #f5f3ff; --bg-secondary-rgb: 245, 243, 255; --bg-tertiary: #ede9fe; --bg-quaternary: #ddd6fe;
+    --text-primary: #581c87; --text-secondary: #6b21a8; --text-tertiary: #7e22ce; --border: #ede9fe; --border-light: #ddd6fe;
+}
+
+.theme-lemonade {
+    --primary: #facc15; --primary-dark: #eab308; --primary-light: #fde047;
+    --bg-primary: #fefce8; --bg-secondary: #fef9c3; --bg-secondary-rgb: 254, 249, 195; --bg-tertiary: #fef08a; --bg-quaternary: #fde047;
+    --text-primary: #422006; --text-secondary: #78350f; --text-tertiary: #92400e; --border: #fef08a; --border-light: #fde047;
+}

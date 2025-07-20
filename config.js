@@ -31,6 +31,12 @@ const THEMES = [
     { name: 'Indigo', className: 'theme-indigo', gradient: ['#6366f1', '#818cf8'] },
     { name: 'Emerald', className: 'theme-emerald', gradient: ['#10b981', '#34d399'] },
     { name: 'Gold', className: 'theme-gold', gradient: ['#f59e0b', '#fbbf24'] },
+    { name: 'Sakura', className: 'theme-sakura', gradient: ['#ff8fab', '#ff5d8f'] },
+    { name: 'Tangerine', className: 'theme-tangerine', gradient: ['#fdba74', '#fb923c'] },
+    { name: 'Kiwi', className: 'theme-kiwi', gradient: ['#a3e635', '#84cc16'] },
+    { name: 'Sky', className: 'theme-sky', gradient: ['#7dd3fc', '#38bdf8'] },
+    { name: 'Lavender', className: 'theme-lavender', gradient: ['#d8b4fe', '#c084fc'] },
+    { name: 'Lemonade', className: 'theme-lemonade', gradient: ['#fde047', '#bef264'] },
 ];
 
 const FONTS = [

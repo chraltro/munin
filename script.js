@@ -1,5 +1,5 @@
 const APP_CONFIG = {
-    passwordHash: '7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069',
+    passwordHash: '7f72131af35c82819bb44f256e34419f381fdeb465b1727d153b58030fabbcb7',
     gistFilename: 'chrisidian-notes.json'
 };
 

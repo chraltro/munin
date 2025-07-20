@@ -1199,6 +1199,46 @@ body {
     margin-right: 0.5em;
 }
 
+.autocomplete-container {
+    position: absolute;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    z-index: 1000;
+    max-height: 250px;
+    min-width: 200px;
+    overflow-y: auto;
+    display: none;
+}
+
+.autocomplete-item {
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+}
+.autocomplete-item:last-child {
+    border-bottom: none;
+}
+
+.autocomplete-item:hover,
+.autocomplete-item.active {
+    background: var(--primary);
+    color: white;
+}
+
+.autocomplete-item-title {
+    font-weight: 600;
+}
+
+.autocomplete-item-type {
+    font-size: 0.8em;
+    opacity: 0.7;
+    margin-left: 0.5rem;
+}
+
 .template-list-modal {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));

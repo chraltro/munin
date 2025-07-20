@@ -57,6 +57,7 @@ const elements = {
     noteTagsContainer: document.getElementById('tags-input-area'),
     noteTagInput: document.getElementById('noteTagInput'),
     noteEditor: document.getElementById('noteEditor'),
+    autocompleteContainer: document.getElementById('autocompleteContainer'),
     notePreview: document.getElementById('notePreview'),
     editModeBtn: document.getElementById('editModeBtn'),
     previewModeBtn: document.getElementById('previewModeBtn'),
@@ -189,6 +190,8 @@ function setupEventListeners() {
     elements.servingsInput.addEventListener('change', handleServingsInputChange);
     elements.noteTitle.addEventListener('input', handleNoteChange);
     elements.noteEditor.addEventListener('input', handleNoteChange);
+    elements.noteEditor.addEventListener('input', handleEditorAutocomplete);
+    elements.noteEditor.addEventListener('keydown', handleEditorAutocompleteKeydown);
     elements.noteTagInput.addEventListener('keydown', handleTagInput);
     elements.currentFolderName.addEventListener('click', handleFolderNameClick);
     elements.notePreview.addEventListener('change', handleCheckboxChangeInPreview);
@@ -228,12 +231,16 @@ function setupModalEventListeners() {
 }
 
 function setupNoteLinkHandlers() {
-    const handleNoteLinkClick = (e) => {
+    const handleLinkClick = (e) => {
         const link = e.target.closest('a');
-        if (link && link.dataset.noteId) {
+        if (!link) return;
+
+        const noteId = link.dataset.noteId;
+        const tagName = link.dataset.tagName;
+
+        if (noteId) {
             e.preventDefault();
-            const noteId = parseInt(link.dataset.noteId, 10);
-            const noteToOpen = state.notes.find(n => n.id === noteId);
+            const noteToOpen = state.notes.find(n => n.id === parseInt(noteId, 10));
             if (noteToOpen) {
                 openNote(noteToOpen);
                 if (e.currentTarget === elements.aiResponseModal) {
@@ -242,11 +249,17 @@ function setupNoteLinkHandlers() {
             } else {
                 showNotification(`Note with ID ${noteId} not found.`, 'error');
             }
+        } else if (tagName) {
+            e.preventDefault();
+            selectTag(tagName);
+            if (e.currentTarget === elements.aiResponseModal) {
+                elements.aiResponseModal.style.display = 'none';
+            }
         }
     };
 
-    elements.aiResponseOutput.addEventListener('click', handleNoteLinkClick);
-    elements.notePreview.addEventListener('click', handleNoteLinkClick);
+    elements.aiResponseOutput.addEventListener('click', handleLinkClick);
+    elements.notePreview.addEventListener('click', handleLinkClick);
 }
 
 function showNotification(message, type = 'info') {
@@ -724,11 +737,19 @@ async function findSemanticallyRelevantNotes(command, maxNotes = 5) {
 }
 
 function renderSanitizedHTML(markdownContent) {
-    let html = marked.parse(markdownContent, { gfm: true });
+    // Pre-process hashtags to convert them into a custom link format
+    const preProcessedContent = markdownContent.replace(/(^|\s)#([a-zA-Z0-9\-_]+)/g, '$1[#$2](app://tag/$2)');
+
+    let html = marked.parse(preProcessedContent, { gfm: true });
+    
+    // Convert custom note and tag links into usable data attributes
     html = html.replace(/href="app:\/\/note\/(\d+)"/g, 'href="#" data-note-id="$1"');
+    html = html.replace(/href="app:\/\/tag\/([a-zA-Z0-9\-_]+)"/g, 'href="#" data-tag-name="$1"');
+
     // Allow checklists to be interactive by removing the 'disabled' attribute.
     html = html.replace(/ disabled=""/g, '');
-    return DOMPurify.sanitize(html, { ADD_ATTR: ['data-note-id', 'class'] });
+
+    return DOMPurify.sanitize(html, { ADD_ATTR: ['data-note-id', 'class', 'data-tag-name'] });
 }
 
 async function processCommand() {
@@ -2027,4 +2048,184 @@ function renderNoteTags() {
             elements.noteTagsContainer.appendChild(tagPill);
         });
     }
+}
+
+// --- Autocomplete Logic ---
+
+function getCaretCoordinates(element, position) {
+    const mirrorDiv = document.getElementById('caret-mirror-div') || document.createElement('div');
+    if (!mirrorDiv.id) {
+        mirrorDiv.id = 'caret-mirror-div';
+        document.body.appendChild(mirrorDiv);
+    }
+    
+    const style = window.getComputedStyle(element);
+    const properties = [
+        'boxSizing', 'width', 'height', 'overflowX', 'overflowY', 'whiteSpace', 'wordWrap',
+        'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth', 'borderStyle',
+        'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
+        'fontStyle', 'fontVariant', 'fontWeight', 'fontStretch', 'fontSize', 'fontSizeAdjust', 'lineHeight', 'fontFamily',
+    ];
+    
+    properties.forEach(prop => { mirrorDiv.style[prop] = style[prop]; });
+    
+    mirrorDiv.style.position = 'absolute';
+    mirrorDiv.style.visibility = 'hidden';
+    mirrorDiv.style.top = '-9999px';
+    mirrorDiv.style.left = '0px';
+
+    mirrorDiv.textContent = element.value.substring(0, position);
+    
+    const span = document.createElement('span');
+    span.textContent = '.';
+    mirrorDiv.appendChild(span);
+    
+    const coords = {
+        top: span.offsetTop + parseInt(style.borderTopWidth),
+        left: span.offsetLeft + parseInt(style.borderLeftWidth)
+    };
+    
+    const editorRect = elements.editorPanel.getBoundingClientRect();
+    const textareaRect = element.getBoundingClientRect();
+    
+    return {
+        top: coords.top - element.scrollTop + textareaRect.top - editorRect.top,
+        left: coords.left - element.scrollLeft + textareaRect.left - editorRect.left,
+        height: parseInt(style.lineHeight)
+    };
+}
+
+
+let autocompleteState = {
+    active: false,
+    term: '',
+    startIndex: -1,
+    items: [],
+    activeIndex: -1,
+    type: ''
+};
+
+function handleEditorAutocomplete(e) {
+    const editor = e.target;
+    const text = editor.value;
+    const pos = editor.selectionStart;
+
+    const textBeforeCursor = text.slice(0, pos);
+    const match = textBeforeCursor.match(/#(\w*)$/);
+
+    if (match) {
+        autocompleteState.active = true;
+        autocompleteState.type = '#';
+        autocompleteState.term = match[1];
+        autocompleteState.startIndex = match.index;
+
+        const tagMatches = state.allTags.filter(t => t.toLowerCase().includes(autocompleteState.term.toLowerCase()));
+        const noteMatches = state.notes
+            .filter(n => n.folder !== APP_CONFIG.templateFolder && n.title.toLowerCase().includes(autocompleteState.term.toLowerCase()))
+            .slice(0, 5); // Limit note results for performance
+
+        autocompleteState.items = [
+            ...tagMatches.map(t => ({ type: 'tag', value: t })),
+            ...noteMatches.map(n => ({ type: 'note', value: n.title, id: n.id }))
+        ];
+
+        if (autocompleteState.items.length > 0) {
+            renderAutocomplete();
+        } else {
+            hideAutocomplete();
+        }
+    } else {
+        hideAutocomplete();
+    }
+}
+
+function renderAutocomplete() {
+    const container = elements.autocompleteContainer;
+    container.innerHTML = '';
+
+    autocompleteState.items.forEach((item, index) => {
+        const div = document.createElement('div');
+        div.className = 'autocomplete-item';
+        div.dataset.index = index;
+
+        if (item.type === 'tag') {
+            div.innerHTML = `<span class="autocomplete-item-title">#${item.value}</span> <span class="autocomplete-item-type">Tag</span>`;
+        } else {
+            div.innerHTML = `<span class="autocomplete-item-title">${item.value}</span> <span class="autocomplete-item-type">Note</span>`;
+        }
+
+        div.addEventListener('click', () => {
+            autocompleteState.activeIndex = index;
+            insertAutocompleteSelection();
+        });
+        container.appendChild(div);
+    });
+
+    autocompleteState.activeIndex = 0;
+    container.children[0]?.classList.add('active');
+
+    const coords = getCaretCoordinates(elements.noteEditor, elements.noteEditor.selectionStart);
+    container.style.top = `${coords.top + coords.height}px`;
+    container.style.left = `${coords.left}px`;
+    container.style.display = 'block';
+}
+
+function hideAutocomplete() {
+    autocompleteState.active = false;
+    elements.autocompleteContainer.style.display = 'none';
+}
+
+function handleEditorAutocompleteKeydown(e) {
+    if (!autocompleteState.active) return;
+
+    if (['ArrowDown', 'ArrowUp', 'Enter', 'Tab', 'Escape'].includes(e.key)) {
+        e.preventDefault();
+        
+        if (e.key === 'ArrowDown') {
+            navigateAutocomplete(1);
+        } else if (e.key === 'ArrowUp') {
+            navigateAutocomplete(-1);
+        } else if (e.key === 'Enter' || e.key === 'Tab') {
+            insertAutocompleteSelection();
+        } else if (e.key === 'Escape') {
+            hideAutocomplete();
+        }
+    }
+}
+
+function navigateAutocomplete(direction) {
+    const items = elements.autocompleteContainer.children;
+    if (items.length === 0) return;
+
+    items[autocompleteState.activeIndex]?.classList.remove('active');
+    autocompleteState.activeIndex = (autocompleteState.activeIndex + direction + items.length) % items.length;
+    items[autocompleteState.activeIndex]?.classList.add('active');
+    items[autocompleteState.activeIndex]?.scrollIntoView({ block: 'nearest' });
+}
+
+function insertAutocompleteSelection() {
+    const selected = autocompleteState.items[autocompleteState.activeIndex];
+    if (!selected) {
+        hideAutocomplete();
+        return;
+    }
+
+    const editor = elements.noteEditor;
+    const text = editor.value;
+    const end = autocompleteState.startIndex + autocompleteState.term.length + 1;
+    
+    let replacement;
+    if (selected.type === 'tag') {
+        replacement = `#${selected.value} `;
+    } else { // note
+        replacement = `[${selected.value}](app://note/${selected.id})`;
+    }
+
+    editor.value = text.slice(0, autocompleteState.startIndex) + replacement + text.slice(end);
+    
+    const newCursorPos = autocompleteState.startIndex + replacement.length;
+    editor.setSelectionRange(newCursorPos, newCursorPos);
+
+    hideAutocomplete();
+    handleNoteChange(); // Trigger save
 }

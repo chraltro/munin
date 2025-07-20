@@ -445,11 +445,20 @@ body {
     letter-spacing: 0.05em;
 }
 
-.tag-list {
+.tag-list-container {
     padding: 0 1rem 1rem;
+}
+
+.tag-list {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
+    transition: max-height 0.3s ease-in-out;
+}
+
+.tag-list.is-collapsed {
+    max-height: 280px; /* approx 10 rows */
+    overflow-y: hidden;
 }
 
 .tag-item {
@@ -473,6 +482,26 @@ body {
     color: white;
     transform: translateY(0);
     box-shadow: var(--shadow);
+}
+
+.show-more-tags-btn {
+    width: 100%;
+    padding: 0.5rem;
+    margin-top: 0.5rem;
+    border: none;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    cursor: pointer;
+    text-align: center;
+    font-weight: 500;
+    transition: var(--transition-fast);
+    border-radius: var(--radius);
+    font-size: 0.8rem;
+}
+
+.show-more-tags-btn:hover {
+    background: var(--bg-quaternary);
+    color: var(--text-primary);
 }
 
 .notes-area {

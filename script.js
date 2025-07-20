@@ -91,6 +91,7 @@ const elements = {
     processBtn: document.getElementById('processBtn'),
     folderList: document.getElementById('folderList'),
     tagList: document.getElementById('tagList'),
+    tagListContainer: document.getElementById('tagListContainer'),
     notesList: document.getElementById('notesList'),
     currentFolderName: document.getElementById('currentFolderName'),
     newFolderBtn: document.getElementById('newFolderBtn'),
@@ -1149,11 +1150,20 @@ function updateAllTags() {
 }
 
 function renderTags() {
+    // Clear previous content and state
+    elements.tagList.innerHTML = '';
+    const oldBtn = elements.tagListContainer.querySelector('.show-more-tags-btn');
+    if (oldBtn) oldBtn.remove();
+    elements.tagList.classList.remove('is-collapsed');
+
+    // Render "All Notes" tag
     elements.tagList.innerHTML = `
         <span class="tag-item ${state.currentTag === 'All Notes' ? 'active' : ''}" onclick="selectTag('All Notes')">
             All Notes
         </span>
     `;
+
+    // Render all other tags
     state.allTags.forEach(tag => {
         const tagEl = document.createElement('span');
         tagEl.className = `tag-item ${state.currentTag === tag ? 'active' : ''}`;
@@ -1161,6 +1171,26 @@ function renderTags() {
         tagEl.onclick = () => selectTag(tag);
         elements.tagList.appendChild(tagEl);
     });
+
+    // Defer the height check to allow for rendering, then add button if needed
+    setTimeout(() => {
+        const MAX_HEIGHT_BEFORE_COLLAPSE = 280; // Corresponds to approx. 10 rows
+        
+        if (elements.tagList.offsetHeight > MAX_HEIGHT_BEFORE_COLLAPSE) {
+            elements.tagList.classList.add('is-collapsed');
+            
+            const showMoreBtn = document.createElement('button');
+            showMoreBtn.textContent = 'Show All Tags';
+            showMoreBtn.className = 'show-more-tags-btn';
+            
+            showMoreBtn.onclick = () => {
+                elements.tagList.classList.toggle('is-collapsed');
+                const isCollapsed = elements.tagList.classList.contains('is-collapsed');
+                showMoreBtn.textContent = isCollapsed ? 'Show All Tags' : 'Show Fewer Tags';
+            };
+            elements.tagListContainer.appendChild(showMoreBtn);
+        }
+    }, 50);
 }
 
 async function createNewFolder() {

@@ -697,9 +697,9 @@ TOOL-USE INSTRUCTIONS:
    - Use this for commands that clearly ask to save new information.
    - **CRITICAL**: The 'content' you generate MUST be well-formatted markdown. Use headings, lists, bold text, and newlines (\`\\n\`) to make the note clear and readable.
    - **If the note is a RECIPE, you MUST follow these rules**:
-     1. Set `folder` to "Recipes".
-     2. Add a `servings` argument (e.g., \`"servings": 4\`).
-     3. Each ingredient line must be a Markdown list item (starting with \`-\`, \`*\`, or a number like \`1.\`). The text of the list item must begin with the numeric amount. For example: \`- 250g flour\` or \`* 2 eggs\`. This is required for scaling.
+     1. Set 'folder' to "Recipes".
+     2. Add a 'servings' argument (e.g., \'"servings": 4\').
+     3. For every ingredient in the markdown 'content', the line MUST be a list item starting with a numeric quantity (e.g., \`- 250g flour\`, \`* 2 eggs\`). This is required for scaling.
    - **args for a regular note**: { "title": "...", "content": "...", "folder": "...", "newFolder": true/false }
    - **args for a RECIPE**: { "title": "...", "content": "...", "folder": "Recipes", "servings": 4, "newFolder": false }
 

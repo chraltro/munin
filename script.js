@@ -281,7 +281,7 @@ Example for "add milk to my grocery list": {"intent": "UPDATE", "targetTitle": "
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 contents: [{ parts: [{ text: intentPrompt }] }],
-                generationConfig: { temperature: 0.1, maxOutputTokens: 200 }
+                generationConfig: { temperature: 0.1, maxOutputTokens: 2048 }
             })
         });
 
@@ -342,7 +342,7 @@ Response Format:
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         contents: [{ parts: [{ text: updatePrompt }] }],
-                        generationConfig: { temperature: 0.5, maxOutputTokens: 8192 }
+                        generationConfig: { temperature: 0.5, maxOutputTokens: 65536 }
                     })
                 });
 
@@ -415,7 +415,7 @@ Response Format: You MUST respond with ONLY a single, valid JSON object.
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         contents: [{ parts: [{ text: createPrompt }] }],
-                        generationConfig: { temperature: 0.7, maxOutputTokens: 8192 }
+                        generationConfig: { temperature: 0.7, maxOutputTokens: 65536 }
                     })
                 });
 

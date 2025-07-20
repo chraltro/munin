@@ -347,7 +347,7 @@ function showMainApp() {
 }
 
 function handleCommandKeyPress(e) {
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+    if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
         e.preventDefault();
         processCommand();
     }

@@ -1,181 +1,85 @@
 # Chrisidian - AI-Powered Notes App
 
-A smart, markdown-based note-taking app with AI categorization powered by Google Gemini Flash 2.5. Host it on GitHub Pages and access your notes from anywhere!
+
+
+Chrisidian is a smart, self-hosted, and private note-taking application that leverages AI to automatically organize your thoughts. Built with a focus on simplicity and privacy, it uses natural language to create, title, and file your notes into appropriate folders. Your data is stored securely in a private GitHub Gist, giving you full ownership and control.
+
+## About The Project
+
+In a world of complex, subscription-based note apps, Chrisidian offers a return to simplicity and ownership. It's a single `index.html` file that you can host for free on GitHub Pages. The core idea is to remove the friction of note-taking: instead of thinking about titles, tags, and folders, you just write. The AI backend handles the organization for you.
+
+This project is perfect for developers, writers, and anyone who wants a fast, intelligent, and private scratchpad for their ideas, accessible from any browser.
+
+### Built With
+
+*   [Google Gemini API](https://ai.google.dev/) - For natural language understanding and note organization.
+*   [GitHub Gists](https://gist.github.com/) - As a private, version-controlled database.
+*   [Marked.js](https://marked.js.org/) - For Markdown to HTML conversion.
+*   [DOMPurify](https://github.com/cure53/DOMPurify) - For XSS sanitization and security.
+*   [Font Awesome](https://fontawesome.com/) - For icons.
+*   Vanilla JavaScript, HTML, and CSS - No frameworks, no build steps.
 
 ## Features
 
-- 🤖 **AI-Powered Organization**: Natural language commands like "save this recipe" automatically categorize notes
-- 📝 **Markdown Support**: Full markdown editing with live preview
-- 📁 **Smart Folders**: Auto-organizing with AI-suggested folders
-- 🔒 **Password Protected**: Secure access with auto-login after first sign-in
-- ☁️ **Cloud Storage**: Notes stored in GitHub Gists
-- 📱 **Responsive**: Works on desktop and mobile
-- 🌙 **Dark Theme**: Easy on the eyes
+-   🤖 **AI-Powered Commands**: Use natural language to create and organize notes (e.g., `"Save this recipe for cookies..."`).
+-   📝 **Full Markdown Support**: Write in Markdown with a live preview mode.
+-   ☁️ **Private Cloud Storage**: All notes are stored in a private, secret GitHub Gist that only you can access.
+-   🔒 **Secure & Private**: API keys are stored only in your browser's local storage. Your notes are never shared with third parties.
+-   🎨 **Theming**: Multiple built-in color themes to customize the look and feel.
+-   📱 **Responsive Design**: Works on both desktop and mobile browsers.
+-   🚀 **Zero-Config Deployment**: Host it for free on GitHub Pages with no server or database setup required.
 
-## Quick Setup (5 minutes)
+## Getting Started
 
-### 1. Get Your API Keys
+To get a local copy up and running, follow these simple steps.
 
-#### Google Gemini API Key:
-1. Go to [Google AI Studio](https://aistudio.google.com/app/apikey)
-2. Click "Create API Key"
-3. Copy the key - you'll need it for login
+### Prerequisites
 
-#### GitHub Personal Access Token:
-1. Go to GitHub → Settings → Developer settings → [Personal access tokens](https://github.com/settings/tokens)
-2. Click "Generate new token (classic)"
-3. Name it "Chrisidian Notes"
-4. Select scope: `gist` (create gists)
-5. Generate and copy the token
+You will need to obtain API keys from the following services:
 
-### 2. Deploy to GitHub Pages
+1.  **Google Gemini API Key**
+    *   Go to [Google AI Studio](https://aistudio.google.com/app/apikey) and create a new API key.
+2.  **GitHub Personal Access Token**
+    *   Go to GitHub → Settings → Developer settings → [Personal access tokens](https://github.com/settings/tokens).
+    *   Generate a **classic** token with the `gist` scope enabled. This is required for the app to read and write to its database.
 
-1. Create a new GitHub repository named `chrisidian` (or any name you prefer)
-2. Upload these files:
-   - `index.html`
-   - `styles.css`
-   - `script.js`
-   - `README.md`
+### Deployment
 
-3. Enable GitHub Pages:
-   - Go to Settings → Pages
-   - Source: Deploy from a branch
-   - Branch: main (or master)
-   - Folder: / (root)
-   - Save
+The easiest way to use Chrisidian is to deploy it to GitHub Pages.
 
-4. Your app will be live at: `https://[your-username].github.io/chrisidian/`
+1.  **Fork this repository** to your own GitHub account.
+2.  Go to your new repository's **Settings** tab.
+3.  Navigate to the **Pages** section.
+4.  Under "Build and deployment", select the source as **Deploy from a branch**.
+5.  Choose the `main` branch and the `/ (root)` folder. Click **Save**.
+6.  Your app will be live in a few minutes at `https://<Your-Username>.github.io/<repository-name>/`.
 
-### 3. First Login
+### Configuration
 
-1. Visit your deployed app
-2. Enter:
-   - **Password**: `chrisidian2024` (change this in script.js line 5!)
-   - **Gemini API Key**: Your key from step 1
-   - **GitHub Token**: Your token from step 1
+1.  **First-time Login**: Open your deployed app URL. You will be prompted for:
+    *   **Password**: The default is `chrisidian2024`.
+    *   **Gemini API Key**: The key you generated.
+    *   **GitHub Token**: The token you generated.
+2.  **Change the Password (Important!)**: For security, you must change the default password.
+    *   Open the **Developer Console** in your browser (usually `F12` or `Ctrl+Shift+I`).
+    *   Paste and run the following command, replacing `'your-new-password'` with your actual desired password:
+        ```javascript
+        (async () => { const msgUint8 = new TextEncoder().encode('your-new-password'); const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8); const hashArray = Array.from(new Uint8Array(hashBuffer)); const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join(''); console.log(hashHex); })();
+        ```
+    *   The console will output a long string (a SHA-256 hash). Copy this hash.
+    *   In your repository, edit the `script.js` file. On line 2, replace the value of `passwordHash` with the new hash you copied.
+    *   Commit the change. Your password is now updated.
 
-The app will remember your credentials for auto-login (stored locally, not in the cloud).
+## Roadmap
 
-## Usage
+-   [ ] Full-text search for all notes.
+-   [ ] Support for tags in addition to folders.
+-   [ ] Offline mode with PWA capabilities.
+-   [ ] Voice-to-text input for commands.
+-   [ ] Data import/export functionality.
 
-### Natural Language Commands
-
-Type commands in the input bar:
-- `"Save this recipe: Chocolate chip cookies - Mix flour, sugar..."`
-- `"Save this idea: App that tracks mood with colors"`
-- `"Store this meeting note: Q1 planning - Discussed roadmap..."`
-- `"Remember this: Buy groceries - milk, eggs, bread"`
-
-The AI will:
-- Extract the content
-- Generate an appropriate title
-- Choose or create the best folder
-- Format it in markdown
-
-### Manual Operations
-
-- **New Note**: Click the + button in the notes area
-- **New Folder**: Click the folder+ button in the sidebar
-- **Edit Note**: Click any note to open the editor
-- **Switch Modes**: Toggle between Edit and Preview
-- **Delete Note**: Use the trash button in the editor
-
-### Keyboard Shortcuts
-
-- `Enter` in command input: Process command
-- `Ctrl/Cmd + S` in editor: Save note (when implemented)
-
-## Customization
-
-### Change Password
-Edit `script.js` line 5:
-```javascript
-password: 'your-secure-password-here'
-```
-
-### Add Default Folders
-Edit `script.js` line 13:
-```javascript
-folders: ['Ideas', 'Recipes', 'Work', 'Personal', 'Your-Folder']
-```
-
-### Styling
-Modify `styles.css` - uses CSS variables for easy theming:
-```css
-:root {
-    --primary: #6366f1;  /* Main accent color */
-    --bg-primary: #0f172a;  /* Background color */
-    /* etc... */
-}
-```
-
-## Data Storage
-
-- **Notes**: Stored in a private GitHub Gist (JSON format)
-- **Credentials**: Stored in browser localStorage (never uploaded)
-- **Automatic Backup**: Every save updates the GitHub Gist
-
-### Backup Your Data
-
-1. Go to [gist.github.com](https://gist.github.com)
-2. Find "chrisidian-notes.json"
-3. Download or clone for backup
-
-### Import/Export (Future Feature)
-
-The JSON structure makes it easy to export/import data in future updates.
-
-## Security Notes
-
-- Change the default password immediately
-- API keys are stored locally in your browser
-- Notes are private (GitHub Gist is set to secret)
-- Use HTTPS when deploying
-- Don't share your deployed URL if you want to keep notes private
-
-## Troubleshooting
-
-### "Error loading data"
-- Check your GitHub token has `gist` scope
-- Ensure token hasn't expired
-
-### "Error processing command"
-- Verify Gemini API key is correct
-- Check API quota at Google AI Studio
-
-### Notes not saving
-- Check browser console for errors
-- Verify GitHub token permissions
-
-### Can't see folders on mobile
-- Folders are hidden on mobile for space
-- Select "All Notes" to see everything
-
-## Future Enhancements
-
-- [ ] Search functionality
-- [ ] Tags system
-- [ ] Image attachments
-- [ ] Collaborative sharing
-- [ ] Export to various formats
-- [ ] Keyboard shortcuts
-- [ ] Offline mode with sync
-- [ ] Voice input
-- [ ] Multiple themes
+See the [open issues](https://github.com/chrisidian/chrisidian/issues) for a full list of proposed features (and known issues).
 
 ## License
 
-MIT License - feel free to modify and use!
-
-## Credits
-
-Built with:
-- Google Gemini Flash 2.5 for AI
-- GitHub Gists for storage
-- Marked.js for markdown
-- DOMPurify for security
-- Font Awesome for icons
-
----
-
-Made with 🧠 by Chrisidian
+Distributed under the MIT License. See `LICENSE` for more information.

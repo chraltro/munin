@@ -67,9 +67,10 @@ const themeSwitcherContainer = document.getElementById('themeSwitcherContainer')
 const themeModal = document.getElementById('themeModal');
 const themeModalGrid = document.getElementById('themeModalGrid');
 const closeThemeModalBtn = document.getElementById('closeThemeModalBtn');
+const mobileFolderSelector = document.getElementById('mobileFolderSelector');
 
 document.addEventListener('DOMContentLoaded', () => {
-    if (APP_CONFIG.passwordHash === '7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069') {
+    if (APP_CONFIG.passwordHash === '7f72131af35c82819bb44f256e34419f381fdeb465b1727d153b58030fabbcb7') {
         console.warn('⚠️ SECURITY WARNING: Using default password hash! Change it before deploying!');
         const warning = document.getElementById('securityWarning');
         if (warning) warning.style.display = 'block';
@@ -168,6 +169,7 @@ function setupEventListeners() {
     themeModal.addEventListener('click', (e) => {
         if (e.target === themeModal) themeModal.style.display = 'none';
     });
+    mobileFolderSelector.addEventListener('change', (e) => selectFolder(e.target.value));
 }
 
 function toggleEditorHeader() {
@@ -485,6 +487,7 @@ Now, analyze all the provided data and return the single JSON object for the cor
 }
 
 function renderFolders() {
+    // ---- Desktop List Rendering ----
     folderList.innerHTML = `
         <div class="folder-item ${state.currentFolder === 'All Notes' ? 'active' : ''}" onclick="selectFolder('All Notes')">
             <span class="folder-name">
@@ -515,6 +518,16 @@ function renderFolders() {
         folderEl.appendChild(deleteBtn);
         folderList.appendChild(folderEl);
     });
+
+    // ---- Mobile Dropdown Rendering ----
+    mobileFolderSelector.innerHTML = `<option value="All Notes">All Notes</option>`;
+    state.folders.forEach(folder => {
+        const option = document.createElement('option');
+        option.value = folder;
+        option.textContent = folder;
+        mobileFolderSelector.appendChild(option);
+    });
+    mobileFolderSelector.value = state.currentFolder;
 }
 
 function renderNotes() {

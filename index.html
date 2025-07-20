@@ -20,7 +20,7 @@
                 <input type="text" id="githubToken" placeholder="GitHub Personal Access Token" required>
                 <button type="submit">Login</button>
             </form>
-            <p class="setup-hint">First time? Check SECURITY.md before deploying!</p>
+            <p class="setup-hint">First time? Check the README before deploying!</p>
             <p id="securityWarning" style="color: #ef4444; margin-top: 1rem; display: none;">
                 ⚠️ Using default password! Change hash in script.js before deploying!
             </p>
@@ -45,15 +45,18 @@
                     <button id="changeThemeBtn" class="icon-btn" title="Change Theme">
                         <i class="fas fa-palette"></i>
                     </button>
-                    <h2>Folders</h2>
+                    <h2 class="desktop-only">Folders</h2>
+                    <div id="mobileFolderSelectorContainer" class="mobile-only">
+                         <select id="mobileFolderSelector"></select>
+                    </div>
                     <button id="newFolderBtn" class="icon-btn" title="New Folder">
                         <i class="fas fa-folder-plus"></i>
                     </button>
                 </div>
-                <div id="folderList" class="folder-list">
+                <div id="folderList" class="folder-list desktop-only">
                     <!-- Folders will be dynamically added here -->
                 </div>
-                <div id="themeSwitcherContainer"></div>
+                <div id="themeSwitcherContainer" class="desktop-only"></div>
             </aside>
 
             <!-- Notes Area -->

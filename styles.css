@@ -399,7 +399,17 @@ header h1 {
 }
 
 .note-preview h1, .note-preview h2, .note-preview h3 {
-    margin-top: 1rem;
+    margin-top: 1.75rem; 
+    margin-bottom: 0.75rem;
+}
+
+.note-preview ul,
+.note-preview ol {
+    padding-left: 25px;
+    margin-bottom: 1rem;
+}
+
+.note-preview li {
     margin-bottom: 0.5rem;
 }
 

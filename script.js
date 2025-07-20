@@ -2257,6 +2257,7 @@ async function performContextualAIAction(action, tone) {
                 state.baseServings = servings; // After cleanup, this is the new base
                 elements.servingsInput.value = servings;
                 handleNoteChange(); // Explicitly trigger save logic after updating servings
+                setEditorMode('preview'); // Re-render preview to show changes
             } else {
                 throw new Error("AI response for recipe cleanup was missing 'content' or 'servings'.");
             }

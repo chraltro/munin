@@ -985,6 +985,12 @@ function renderFolders() {
         const folderEl = document.createElement('div');
         folderEl.className = `folder-item ${state.currentFolder === folder ? 'active' : ''}`;
         folderEl.onclick = () => selectFolder(folder);
+        folderEl.dataset.folderName = folder;
+
+        folderEl.addEventListener('dragover', handleDragOver);
+        folderEl.addEventListener('dragenter', handleDragEnter);
+        folderEl.addEventListener('dragleave', handleDragLeave);
+        folderEl.addEventListener('drop', handleFolderDrop);
 
         const nameSpan = document.createElement('span');
         nameSpan.className = 'folder-name';
@@ -1079,10 +1085,14 @@ function renderNotes(notesToShow = null, animate = true) {
     notesToDisplay.forEach((note, index) => {
         const noteCard = document.createElement('div');
         noteCard.className = 'note-card';
+        noteCard.draggable = true;
+        noteCard.dataset.noteId = note.id;
         if (!animate) {
             noteCard.classList.add('visible');
         }
         noteCard.onclick = () => openNote(note);
+        noteCard.addEventListener('dragstart', handleDragStart);
+        noteCard.addEventListener('dragend', handleDragEnd);
         
         const preview = note.content.substring(0, 150).replace(/[#*`]/g, '');
 
@@ -1169,6 +1179,13 @@ function renderTags() {
         tagEl.className = `tag-item ${state.currentTag === tag ? 'active' : ''}`;
         tagEl.textContent = tag;
         tagEl.onclick = () => selectTag(tag);
+        tagEl.dataset.tagName = tag;
+
+        tagEl.addEventListener('dragover', handleDragOver);
+        tagEl.addEventListener('dragenter', handleDragEnter);
+        tagEl.addEventListener('dragleave', handleDragLeave);
+        tagEl.addEventListener('drop', handleTagDrop);
+        
         elements.tagList.appendChild(tagEl);
     });
 
@@ -1605,6 +1622,92 @@ function handleLineHeightChange(e) {
     elements.lineHeightValue.textContent = parseFloat(height).toFixed(1);
     applyTypography(userPreferences);
     saveTypography();
+}
+
+function handleDragStart(e) {
+    // Use a timeout to allow the browser to render the original element before we style it
+    setTimeout(() => e.target.classList.add('is-dragging'), 0);
+    e.dataTransfer.setData('text/plain', e.target.dataset.noteId);
+    e.dataTransfer.effectAllowed = 'move';
+}
+
+function handleDragEnd(e) {
+    e.target.classList.remove('is-dragging');
+}
+
+function handleDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+}
+
+function handleDragEnter(e) {
+    e.preventDefault();
+    e.currentTarget.classList.add('droppable-hover');
+}
+
+function handleDragLeave(e) {
+    e.currentTarget.classList.remove('droppable-hover');
+}
+
+async function handleFolderDrop(e) {
+    e.preventDefault();
+    e.currentTarget.classList.remove('droppable-hover');
+    
+    const noteId = parseInt(e.dataTransfer.getData('text/plain'), 10);
+    const folderName = e.currentTarget.dataset.folderName;
+    const noteIndex = state.notes.findIndex(n => n.id === noteId);
+
+    if (noteIndex !== -1 && state.notes[noteIndex].folder !== folderName) {
+        const oldFolderName = state.notes[noteIndex].folder;
+        state.notes[noteIndex].folder = folderName;
+        state.notes[noteIndex].modified = new Date().toISOString();
+        
+        updateSaveStatus('Moving...', 'saving');
+        await saveData();
+        
+        // Only re-render if the current view is affected
+        if (state.currentFolder === oldFolderName || state.currentFolder === 'All Notes') {
+            renderNotes();
+        }
+        
+        showNotification(`Note moved to "${folderName}"`, 'success');
+        updateSaveStatus('Saved');
+    }
+}
+
+async function handleTagDrop(e) {
+    e.preventDefault();
+    e.currentTarget.classList.remove('droppable-hover');
+
+    const noteId = parseInt(e.dataTransfer.getData('text/plain'), 10);
+    const tagName = e.currentTarget.dataset.tagName;
+    const noteIndex = state.notes.findIndex(n => n.id === noteId);
+
+    if (noteIndex !== -1) {
+        const note = state.notes[noteIndex];
+        if (!note.tags) note.tags = [];
+
+        if (!note.tags.includes(tagName)) {
+            note.tags.push(tagName);
+            note.modified = new Date().toISOString();
+
+            updateSaveStatus('Tagging...', 'saving');
+            await saveData();
+
+            // Re-render notes list if tags are visible or if filtering by the new tag
+            renderNotes(null, false); 
+            
+            // If the dropped-on note is open, update its tags view
+            if (state.currentNote && state.currentNote.id === noteId) {
+                renderNoteTags();
+            }
+
+            showNotification(`Note tagged with "#${tagName}"`, 'success');
+            updateSaveStatus('Saved');
+        } else {
+            showNotification(`Note already has tag "#${tagName}"`);
+        }
+    }
 }
 
 function handleTagInput(e) {

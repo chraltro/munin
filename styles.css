@@ -504,6 +504,20 @@ body {
     color: var(--text-primary);
 }
 
+.note-card.is-dragging {
+    opacity: 0.5;
+    border-style: dashed;
+    transform: scale(0.95) !important;
+}
+
+.folder-item.droppable-hover,
+.tag-item.droppable-hover {
+    transform: scale(1.05) !important;
+    box-shadow: 0 0 0 2px var(--primary);
+    background: var(--primary-dark);
+    color: white !important;
+}
+
 .notes-area {
     flex: 1;
     display: flex;
@@ -619,6 +633,8 @@ body {
     transform: translateY(20px);
     position: relative;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 .note-card::before {
@@ -685,7 +701,7 @@ body {
 }
 
 .note-meta {
-    margin-top: 1rem;
+    margin-top: auto;
     padding-top: 1rem;
     border-top: 1px solid var(--border);
     font-size: 0.75rem;

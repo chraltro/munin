@@ -820,6 +820,7 @@ body {
 }
 
 .editor-panel.header-collapsed .editor-header,
+.editor-panel.header-collapsed .editor-tags-container,
 .editor-panel.header-collapsed .editor-toolbar {
     display: none;
 }

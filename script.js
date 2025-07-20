@@ -399,6 +399,59 @@ function handleServingsInputChange(e) {
     setEditorMode('preview');
 }
 
+function toFraction(decimal) {
+    if (decimal === Math.round(decimal)) {
+        return decimal.toString();
+    }
+    
+    const tolerance = 0.001;
+    const whole = Math.floor(decimal);
+    const fracDecimal = decimal - whole;
+
+    if (fracDecimal < tolerance) {
+        return whole.toString();
+    }
+
+    const commonFractions = [
+        [1, 8], [1, 4], [1, 3], [3, 8], [1, 2], [5, 8], [2, 3], [3, 4], [7, 8]
+    ];
+
+    for (const [num, den] of commonFractions) {
+        if (Math.abs(fracDecimal - (num / den)) < tolerance) {
+            return (whole > 0 ? whole + ' ' : '') + `${num}/${den}`;
+        }
+    }
+    
+    return parseFloat(decimal.toFixed(2)).toString();
+}
+
+function parseQuantity(quantityStr) {
+    quantityStr = quantityStr.trim();
+    if (quantityStr.includes(' ')) {
+        const parts = quantityStr.split(' ');
+        if (parts.length === 2 && parts[1].includes('/')) {
+            const whole = parseInt(parts[0], 10);
+            const fracParts = parts[1].split('/');
+            const num = parseInt(fracParts[0], 10);
+            const den = parseInt(fracParts[1], 10);
+            if (!isNaN(whole) && !isNaN(num) && den) {
+                return whole + num / den;
+            }
+        }
+    } else if (quantityStr.includes('/')) {
+        const parts = quantityStr.split('/');
+        if (parts.length === 2) {
+            const num = parseInt(parts[0], 10);
+            const den = parseInt(parts[1], 10);
+            if (!isNaN(num) && den) {
+                return num / den;
+            }
+        }
+    }
+    const parsed = parseFloat(quantityStr);
+    return isNaN(parsed) ? null : parsed;
+}
+
 function scaleRecipeContent(content, baseServings, newServings) {
     if (!baseServings || !newServings || baseServings === newServings) {
         return content;
@@ -406,18 +459,28 @@ function scaleRecipeContent(content, baseServings, newServings) {
     const scaleFactor = newServings / baseServings;
 
     return content.split('\n').map(line => {
-        const match = line.match(/^(\s*[-*+]\s*|\s*\d+\.\s+)(\d*\.?\d+)(.*)/);
-        if (match) {
-            const prefix = match[1];
-            const originalAmount = parseFloat(match[2]);
-            const restOfLine = match[3];
+        const lineMatch = line.match(/^(\s*[-*+]\s*|\s*\d+\.\s+)(.*)/);
+        if (!lineMatch) {
+            return line;
+        }
 
-            if (!isNaN(originalAmount)) {
+        const prefix = lineMatch[1];
+        let restOfLine = lineMatch[2];
+        
+        const quantityMatch = restOfLine.match(/^(\d+\s+\d+\/\d+|\d+\/\d+|\d*\.?\d+)/);
+        
+        if (quantityMatch) {
+            const quantityStr = quantityMatch[0];
+            const originalAmount = parseQuantity(quantityStr);
+            
+            if (originalAmount !== null) {
+                const unitAndIngredient = restOfLine.substring(quantityStr.length);
                 let newAmount = originalAmount * scaleFactor;
-                let formattedAmount = parseFloat(newAmount.toFixed(2));
-                return `${prefix}${formattedAmount}${restOfLine}`;
+                let formattedAmount = toFraction(newAmount);
+                return `${prefix}${formattedAmount}${unitAndIngredient}`;
             }
         }
+        
         return line;
     }).join('\n');
 }

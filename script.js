@@ -1275,7 +1275,9 @@ function openNote(note) {
         const noteToSave = {
             id: state.currentNote.id,
             title: elements.noteTitle.value,
-            content: elements.noteEditor.value
+            content: elements.noteEditor.value,
+            tags: Array.from(elements.noteTagsContainer.querySelectorAll('.tag-pill'))
+                .map(pill => pill.firstChild.textContent)
         };
         performBackgroundSave(noteToSave);
     }
@@ -1315,7 +1317,9 @@ function closeEditor() {
         const noteToSave = {
             id: state.currentNote.id,
             title: elements.noteTitle.value,
-            content: elements.noteEditor.value
+            content: elements.noteEditor.value,
+            tags: Array.from(elements.noteTagsContainer.querySelectorAll('.tag-pill'))
+                .map(pill => pill.firstChild.textContent)
         };
         performBackgroundSave(noteToSave);
     }
@@ -1375,6 +1379,7 @@ async function performBackgroundSave(note) {
 
     state.notes[noteIndex].title = note.title;
     state.notes[noteIndex].content = note.content;
+    state.notes[noteIndex].tags = note.tags;
     state.notes[noteIndex].modified = new Date().toISOString();
 
     console.log("Regenerating embedding in background for note:", note.id);
@@ -1383,6 +1388,9 @@ async function performBackgroundSave(note) {
 
     await saveData();
     
+    updateAllTags();
+    renderTags();
+
     if (!state.currentNote && !state.isSemanticSearching) {
         renderNotes(null, false);
     }

@@ -15,14 +15,14 @@ let state = {
 };
 
 const THEMES = [
-    { name: 'Dusk', className: 'theme-dusk', color: '#6366f1' },
-    { name: 'Forest', className: 'theme-forest', color: '#22c55e' },
-    { name: 'Rose', className: 'theme-rose', color: '#f43f5e' },
-    { name: 'Ocean', className: 'theme-ocean', color: '#38bdf8' },
-    { name: 'Amethyst', className: 'theme-amethyst', color: '#a855f7' },
-    { name: 'Slate', className: 'theme-slate', color: '#38bdf8' },
-    { name: 'Sunset', className: 'theme-sunset', color: '#f97316' },
-    { name: 'Mint', className: 'theme-mint', color: '#4ade80' },
+    { name: 'Dusk', className: 'theme-dusk', gradient: ['#6366f1', '#8b5cf6'] },
+    { name: 'Forest', className: 'theme-forest', gradient: ['#22c55e', '#4ade80'] },
+    { name: 'Rose', className: 'theme-rose', gradient: ['#f43f5e', '#f97316'] },
+    { name: 'Ocean', className: 'theme-ocean', gradient: ['#38bdf8', '#4ade80'] },
+    { name: 'Amethyst', className: 'theme-amethyst', gradient: ['#a855f7', '#f43f5e'] },
+    { name: 'Slate', className: 'theme-slate', gradient: ['#64748b', '#94a3b8'] },
+    { name: 'Sunset', className: 'theme-sunset', gradient: ['#f97316', '#facc15'] },
+    { name: 'Mint', className: 'theme-mint', gradient: ['#4ade80', '#38bdf8'] },
 ];
 
 const loginScreen = document.getElementById('loginScreen');
@@ -716,11 +716,13 @@ function renderThemeSwitchers() {
     themeSwitcherContainer.innerHTML = '';
     themeModalGrid.innerHTML = '';
     THEMES.forEach(theme => {
+        const gradientCss = `linear-gradient(135deg, ${theme.gradient[0]}, ${theme.gradient[1]})`;
+
         const swatch = document.createElement('button');
         swatch.className = 'theme-swatch';
         swatch.dataset.theme = theme.className;
         swatch.title = theme.name;
-        swatch.style.backgroundColor = theme.color;
+        swatch.style.backgroundImage = gradientCss;
         swatch.onclick = () => applyTheme(theme.className);
         themeSwitcherContainer.appendChild(swatch);
 
@@ -731,7 +733,7 @@ function renderThemeSwitchers() {
             themeModal.style.display = 'none';
         };
         card.innerHTML = `
-            <div class="theme-card-swatch" style="background-color: ${theme.color};"></div>
+            <div class="theme-card-swatch" style="background-image: ${gradientCss};"></div>
             <span>${theme.name}</span>
         `;
         themeModalGrid.appendChild(card);

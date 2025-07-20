@@ -715,14 +715,15 @@ html, .theme-dusk {
 }
 
 
-/* --- THEME SWITCHER UI --- */
 .theme-switcher-container {
-    padding: 1rem;
+    padding: 1rem 0.5rem;
     border-top: 1px solid var(--border);
     display: flex;
     justify-content: center;
     gap: 0.75rem;
     flex-wrap: wrap;
+    max-width: 130px; /* This forces the 4x2 grid layout */
+    margin: 0 auto; /* This centers the container itself */
 }
 
 .theme-swatch {

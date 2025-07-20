@@ -1093,7 +1093,7 @@ function renderNotes(notesToShow = null, animate = true) {
         const preview = note.content.substring(0, 150).replace(/[#*`]/g, '');
 
         const tagsHTML = (note.tags && note.tags.length > 0)
-            ? `<div class="note-card-tags">${note.tags.map(tag => `<span class="note-card-tag">${tag}</span>`).join('')}</div>`
+            ? `<div class="note-card-tags">${note.tags.slice().sort((a, b) => a.localeCompare(b)).map(tag => `<span class="note-card-tag">${tag}</span>`).join('')}</div>`
             : '';
 
         noteCard.innerHTML = `
@@ -1498,7 +1498,8 @@ async function saveCurrentNote(regenerateEmbedding = false) {
     const newTitle = elements.noteTitle.value;
     const newContent = elements.noteEditor.value;
     const newTags = Array.from(elements.noteTagsContainer.querySelectorAll('.tag-pill'))
-        .map(pill => pill.firstChild.textContent);
+        .map(pill => pill.firstChild.textContent)
+        .sort((a, b) => a.localeCompare(b));
 
     state.notes[noteIndex].title = newTitle;
     state.notes[noteIndex].content = newContent;
@@ -1524,6 +1525,7 @@ async function saveCurrentNote(regenerateEmbedding = false) {
         renderNotes(null, false);
     }
     
+    renderNoteTags();
     state.isNoteDirty = false;
     elements.saveNoteBtn.classList.toggle('is-dirty', state.isEmbeddingStale);
     updateSaveStatus('Saved');
@@ -1878,7 +1880,7 @@ function addTagToNote(tag) {
 function renderNoteTags() {
     elements.noteTagsContainer.innerHTML = '';
     if (state.currentNote && state.currentNote.tags) {
-        state.currentNote.tags.forEach(tag => {
+        state.currentNote.tags.slice().sort((a, b) => a.localeCompare(b)).forEach(tag => {
             const tagPill = document.createElement('span');
             tagPill.className = 'tag-pill';
             tagPill.textContent = tag;

@@ -1651,6 +1651,8 @@ function handleLineHeightChange(e) {
     saveTypography();
 }
 
+let dragImage = null;
+
 function handleMobileSelectorChange(e) {
     const value = e.target.value;
     const [type, ...nameParts] = value.split(':');
@@ -1664,14 +1666,34 @@ function handleMobileSelectorChange(e) {
 }
 
 function handleDragStart(e) {
-    // Use a timeout to allow the browser to render the original element before we style it
-    setTimeout(() => e.target.classList.add('is-dragging'), 0);
     e.dataTransfer.setData('text/plain', e.target.dataset.noteId);
     e.dataTransfer.effectAllowed = 'move';
+
+    // Create a custom drag image that is solid and looks "picked up"
+    dragImage = e.target.cloneNode(true);
+    dragImage.classList.remove('visible'); // remove animation classes
+    dragImage.style.position = 'absolute';
+    dragImage.style.top = '-9999px';
+    dragImage.style.width = `${e.target.offsetWidth}px`;
+    dragImage.style.height = `${e.target.offsetHeight}px`;
+    dragImage.style.pointerEvents = 'none';
+    dragImage.style.margin = '0';
+    dragImage.style.opacity = '1';
+    dragImage.style.transform = 'rotate(2deg) scale(1.02)';
+    dragImage.style.boxShadow = 'var(--shadow-xl)';
+    document.body.appendChild(dragImage);
+    e.dataTransfer.setDragImage(dragImage, e.offsetX, e.offsetY);
+    
+    // Hide original element after a tick, so the drag image can be created from it
+    setTimeout(() => e.target.classList.add('is-dragging'), 0);
 }
 
 function handleDragEnd(e) {
     e.target.classList.remove('is-dragging');
+    if (dragImage) {
+        document.body.removeChild(dragImage);
+        dragImage = null;
+    }
 }
 
 function handleDragOver(e) {

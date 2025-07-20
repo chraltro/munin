@@ -671,48 +671,6 @@ header h1 {
 }
 
 /* --- THEME DEFINITIONS --- */
-
-/* Default Theme is now explicitly named */
-html, .theme-dusk {
-    --primary: #6366f1; --primary-dark: #4f46e5;
-    --bg-primary: #0f172a; --bg-secondary: #1e293b; --bg-tertiary: #334155;
-    --text-primary: #f1f5f9; --text-secondary: #cbd5e1; --border: #475569;
-}
-.theme-forest {
-    --primary: #22c55e; --primary-dark: #16a34a;
-    --bg-primary: #1c1917; --bg-secondary: #292524; --bg-tertiary: #44403c;
-    --text-primary: #f5f5f4; --text-secondary: #d6d3d1; --border: #57534e;
-}
-.theme-rose {
-    --primary: #f43f5e; --primary-dark: #e11d48;
-    --bg-primary: #1f1d2b; --bg-secondary: #26233a; --bg-tertiary: #3e3a59;
-    --text-primary: #e0def4; --text-secondary: #908caa; --border: #4a4867;
-}
-.theme-ocean {
-    --primary: #38bdf8; --primary-dark: #0ea5e9;
-    --bg-primary: #0c1427; --bg-secondary: #121c33; --bg-tertiary: #21304f;
-    --text-primary: #eaf3ff; --text-secondary: #a8bfe0; --border: #2e4166;
-}
-.theme-amethyst {
-    --primary: #a855f7; --primary-dark: #9333ea;
-    --bg-primary: #181622; --bg-secondary: #232033; --bg-tertiary: #3b3752;
-    --text-primary: #ede9fe; --text-secondary: #d8b4fe; --border: #4c4866;
-}
-.theme-slate {
-    --primary: #38bdf8; --primary-dark: #0ea5e9;
-    --bg-primary: #1c2734; --bg-secondary: #273444; --bg-tertiary: #404d5p;
-    --text-primary: #ffffff; --text-secondary: #a3b3c3; --border: #3f4e5a;
-}
-.theme-sunset {
-    --primary: #f97316; --primary-dark: #ea580c;
-    --bg-primary: #201a18; --bg-secondary: #2f2724; --bg-tertiary: #4b403c;
-    --text-primary: #fff1ec; --text-secondary: #fecba1; --border: #5c4f4a;
-}
-.theme-mint {
-    --primary: #4ade80; --primary-dark: #22c55e;
-    --bg-primary: #0d1c15; --bg-secondary: #12291d; --bg-tertiary: #20402e;
-    --text-primary: #e6f7ed; --text-secondary: #a3d9b8; --border: #2c5942;
-}
 .theme-slate {
     --primary: #64748b; --primary-dark: #475569;
     --bg-primary: #0f172a; --bg-secondary: #1e293b; --bg-tertiary: #334155;

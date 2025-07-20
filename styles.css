@@ -752,9 +752,9 @@ header h1 {
     --text-primary: #fff7ed; --text-secondary: #fed7aa; --border: #715546;
 }
 
-.theme-switcher-container {
+#themeSwitcherContainer {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fill, minmax(24px, 1fr));
     gap: 0.75rem;
     padding: 1rem;
     justify-items: center;

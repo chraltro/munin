@@ -7,6 +7,15 @@ function debounce(func, delay) {
     };
 }
 
+// Cleanup function to prevent memory leaks
+function cleanupDynamicListeners() {
+    const oldNotes = document.querySelectorAll('.note-card, .note-list-item');
+    oldNotes.forEach(note => {
+        const clonedNote = note.cloneNode(true);
+        note.parentNode?.replaceChild(clonedNote, note);
+    });
+}
+
 let tagAutocomplete = {
     active: false,
     container: null,
@@ -39,7 +48,8 @@ let state = {
     saveTimeout: null,
     currentServings: null,
     baseServings: null,
-    activeAIJobs: 0
+    activeAIJobs: 0,
+    lastApiCall: 0
 };
 
 let userPreferences = {
@@ -206,7 +216,7 @@ function setupEventListeners() {
     elements.saveNoteBtn.addEventListener('click', () => saveCurrentNote(true));
     elements.deleteNoteBtn.addEventListener('click', deleteCurrentNote);
     elements.closeEditorBtn.addEventListener('click', closeEditor);
-    elements.searchInput.addEventListener('input', handleSearchInput);
+    elements.searchInput.addEventListener('input', debounce(handleSearchInput, 300));
     elements.searchInput.addEventListener('keypress', handleSearchKeyPress);
     elements.toggleHeaderBtn.addEventListener('click', toggleEditorHeader);
     elements.closeAiResponseBtn.addEventListener('click', () => elements.aiResponseModal.style.display = 'none');
@@ -221,14 +231,14 @@ function setupEventListeners() {
     elements.servingsInput.addEventListener('change', handleServingsInputChange);
     elements.noteTitle.addEventListener('input', handleNoteChange);
     elements.noteEditor.addEventListener('input', handleNoteChange);
-    elements.noteEditor.addEventListener('input', handleEditorAutocomplete);
+    elements.noteEditor.addEventListener('input', debounce(handleEditorAutocomplete, 200));
     elements.noteEditor.addEventListener('keydown', handleEditorAutocompleteKeydown);
     elements.noteEditor.addEventListener('mouseup', handleEditorSelectionChange);
     elements.noteEditor.addEventListener('keyup', handleEditorSelectionChange);
     elements.aiActionsBtn.addEventListener('mousedown', toggleAiActionsMenu);
     elements.aiActionsMenu.addEventListener('click', handleAiActionClick);
     elements.noteTagInput.addEventListener('keydown', handleTagInputKeydown);
-    elements.noteTagInput.addEventListener('input', handleTagInputAutocomplete);
+    elements.noteTagInput.addEventListener('input', debounce(handleTagInputAutocomplete, 200));
     elements.noteTagInput.addEventListener('blur', () => {
         // Use a small delay to allow a click on an autocomplete item to register
         setTimeout(hideTagAutocomplete, 150);
@@ -274,6 +284,15 @@ function setupModalEventListeners() {
     
     elements.closeTemplateModalBtn.addEventListener('click', () => {
         elements.templateModal.style.display = 'none';
+    });
+
+    // Event delegation for better performance with dynamic content
+    elements.notesList.addEventListener('click', (e) => {
+        const noteCard = e.target.closest('.note-card, .note-list-item');
+        if (noteCard && noteCard.dataset.noteId) {
+            const note = state.notes.find(n => n.id === parseInt(noteCard.dataset.noteId));
+            if (note) openNote(note);
+        }
     });
 }
 
@@ -753,6 +772,14 @@ async function saveData() {
 }
 
 async function callGeminiAPI(prompt, generationConfig) {
+    // Rate limiting: minimum 500ms between API calls
+    const now = Date.now();
+    const timeSinceLastCall = now - state.lastApiCall;
+    if (timeSinceLastCall < 500) {
+        await new Promise(resolve => setTimeout(resolve, 500 - timeSinceLastCall));
+    }
+    state.lastApiCall = Date.now();
+
     const modelsToTry = ['gemini-2.5-flash', 'gemini-1.5-flash'];
     let lastError = null;
 
@@ -1213,21 +1240,19 @@ function renderNotes(notesToShow = null, animate = true) {
         });
     }
 
+    // Use DocumentFragment for better performance
+    const fragment = document.createDocumentFragment();
     elements.notesList.innerHTML = '';
     
     if (notesToDisplay.length === 0) {
-        elements.notesList.innerHTML = `
-            <div style="
-                grid-column: 1 / -1;
-                text-align: center;
-                padding: 3rem 1rem;
-                color: var(--text-tertiary);
-            ">
-                <i class="fas fa-sticky-note" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
-                <p style="font-size: 1.1rem; margin-bottom: 0.5rem;">No notes found</p>
-                <p style="font-size: 0.9rem;">Create your first note to get started</p>
-            </div>
+        const emptyDiv = document.createElement('div');
+        emptyDiv.style.cssText = 'grid-column: 1 / -1; text-align: center; padding: 3rem 1rem; color: var(--text-tertiary);';
+        emptyDiv.innerHTML = `
+            <i class="fas fa-sticky-note" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+            <p style="font-size: 1.1rem; margin-bottom: 0.5rem;">No notes found</p>
+            <p style="font-size: 0.9rem;">Create your first note to get started</p>
         `;
+        elements.notesList.appendChild(emptyDiv);
         return;
     }
 
@@ -1260,7 +1285,7 @@ function renderNotes(notesToShow = null, animate = true) {
                 </div>
             `;
             
-            elements.notesList.appendChild(noteCard);
+            fragment.appendChild(noteCard);
             
             if (animate) {
                 setTimeout(() => {
@@ -1286,7 +1311,7 @@ function renderNotes(notesToShow = null, animate = true) {
             <div class="note-list-header-folder sortable" data-sort-by="folder">Folder ${getSortIcon('folder')}</div>
             <div class="note-list-header-modified sortable" data-sort-by="modified">Modified ${getSortIcon('modified')}</div>
         `;
-        elements.notesList.appendChild(header);
+        fragment.appendChild(header);
 
         header.querySelectorAll('.sortable').forEach(h => {
             h.addEventListener('click', (e) => {
@@ -1322,7 +1347,7 @@ function renderNotes(notesToShow = null, animate = true) {
                 <span class="note-list-item-modified">${formatDate(note.modified)}</span>
             `;
 
-            elements.notesList.appendChild(noteListItem);
+            fragment.appendChild(noteListItem);
 
             if (animate) {
                 setTimeout(() => {
@@ -1331,6 +1356,9 @@ function renderNotes(notesToShow = null, animate = true) {
             }
         });
     }
+    
+    // Append all elements at once for better performance
+    elements.notesList.appendChild(fragment);
 }
 
 function selectFolder(folder) {

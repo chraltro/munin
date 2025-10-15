@@ -7,11 +7,15 @@
     <title>Munin - AI-Powered Notes</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <link
         href="https://fonts.googleapis.com/css2?family=Fira+Code&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono&family=Lato&family=Lora&family=Merriweather&family=Nunito&family=Open+Sans&family=Roboto&family=Source+Serif+Pro&display=swap"
-        rel="stylesheet">
+        rel="stylesheet"
+        media="print"
+        onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Code&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono&family=Lato&family=Lora&family=Merriweather&family=Nunito&family=Open+Sans&family=Roboto&family=Source+Serif+Pro&display=swap"></noscript>
     <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous">
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
     <link rel="icon" type="image/svg+xml" href="logo.svg">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
@@ -293,12 +297,12 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
-    <script src="config.js"></script>
-    <script src="templates.js"></script>
-    <script src="prompts.js"></script>
-    <script src="script.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js" crossorigin="anonymous"></script>
+    <script src="config.js" defer></script>
+    <script src="templates.js" defer></script>
+    <script src="prompts.js" defer></script>
+    <script src="script.js" defer></script>
 </body>
 
 </html>

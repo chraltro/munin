@@ -1,4 +1,4 @@
-# AI Developer's Guide to the Chrisidian Note-Taking App
+# AI Developer's Guide to the Munin Note-Taking App
 
 **Objective:** This document is your primary guide. Read it carefully and completely before analyzing or modifying any other file. It provides the essential context for understanding the project's architecture, features, and conventions.
 

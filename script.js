@@ -125,6 +125,7 @@ const elements = {
 document.addEventListener('DOMContentLoaded', initializeApp);
 
 async function initializeApp() {
+    migrateToMunin();
     checkSecurityWarning();
     loadTheme();
     loadTypography();
@@ -133,12 +134,31 @@ async function initializeApp() {
     setupEventListeners();
 }
 
+function migrateToMunin() {
+    try {
+        const mappings = [
+            ['chrisidian_noteViewMode', 'munin_noteViewMode'],
+            ['chrisidian_auth', 'munin_auth'],
+            ['chrisidian_theme', 'munin_theme'],
+            ['chrisidian_typography', 'munin_typography']
+        ];
+        for (const [oldKey, newKey] of mappings) {
+            const oldVal = localStorage.getItem(oldKey);
+            const newVal = localStorage.getItem(newKey);
+            if (oldVal && !newVal) {
+                localStorage.setItem(newKey, oldVal);
+                // Keep old keys for now to avoid surprises; can be removed later
+            }
+        }
+    } catch (_) { /* noop */ }
+}
+
 function saveViewMode() {
-    localStorage.setItem('chrisidian_noteViewMode', state.noteViewMode);
+    localStorage.setItem('munin_noteViewMode', state.noteViewMode);
 }
 
 function loadViewMode() {
-    const savedMode = localStorage.getItem('chrisidian_noteViewMode');
+    const savedMode = localStorage.getItem('munin_noteViewMode') || localStorage.getItem('chrisidian_noteViewMode');
     if (savedMode) {
         state.noteViewMode = savedMode;
     }
@@ -153,7 +173,7 @@ function checkSecurityWarning() {
 }
 
 async function checkAutoLogin() {
-    const savedAuth = localStorage.getItem('chrisidian_auth');
+    const savedAuth = localStorage.getItem('munin_auth') || localStorage.getItem('chrisidian_auth');
     if (savedAuth) {
         const auth = JSON.parse(savedAuth);
         state.geminiKey = auth.geminiKey;
@@ -376,7 +396,7 @@ async function handleLogin(e) {
     state.githubToken = elements.githubTokenInput.value;
     state.isAuthenticated = true;
     
-    localStorage.setItem('chrisidian_auth', JSON.stringify({
+    localStorage.setItem('munin_auth', JSON.stringify({
         geminiKey: state.geminiKey,
         githubToken: state.githubToken
     }));
@@ -393,7 +413,7 @@ async function hashPassword(password) {
 }
 
 function handleLogout() {
-    localStorage.removeItem('chrisidian_auth');
+    localStorage.removeItem('munin_auth');
     state.isAuthenticated = false;
     state.geminiKey = '';
     state.githubToken = '';
@@ -642,8 +662,10 @@ async function loadData() {
             throw new Error(`GitHub API error: ${response.statusText}`);
         }
         
-        const gistsList = await response.json();
-        const existingGist = gistsList.find(g => g.files && g.files[APP_CONFIG.gistFilename]);
+            const gistsList = await response.json();
+            const LEGACY_MAIN = 'chrisidian-notes.json';
+            const LEGACY_EMB = 'chrisidian-notes-embeddings.json';
+            const existingGist = gistsList.find(g => g.files && (g.files[APP_CONFIG.gistFilename] || g.files[LEGACY_MAIN]));
         
         if (existingGist) {
             state.gistId = existingGist.id;
@@ -656,13 +678,15 @@ async function loadData() {
             });
             
             const data = await gistData.json();
-            const mainContent = JSON.parse(data.files[APP_CONFIG.gistFilename].content);
+            const mainFile = data.files[APP_CONFIG.gistFilename] || data.files[LEGACY_MAIN];
+            const mainContent = JSON.parse(mainFile.content);
             state.notes = mainContent.notes || [];
             state.folders = mainContent.folders || state.folders;
 
             let embeddings = {};
-            if (data.files[APP_CONFIG.embeddingFilename]) {
-                embeddings = JSON.parse(data.files[APP_CONFIG.embeddingFilename].content);
+            const embFile = data.files[APP_CONFIG.embeddingFilename] || data.files[LEGACY_EMB];
+            if (embFile) {
+                embeddings = JSON.parse(embFile.content);
             }
 
             // Ensure all notes have a tags array and merge embeddings
@@ -742,7 +766,7 @@ async function saveData() {
                 throw new Error(`GitHub API error: ${error.message || response.statusText}`);
             }
         } else {
-            gistData.description = 'Chrisidian Notes Data';
+            gistData.description = 'Munin Notes Data';
             const response = await fetch('https://api.github.com/gists', {
                 method: 'POST',
                 headers: {

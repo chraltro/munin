@@ -1,12 +1,12 @@
-# Chrisidian - AI-Powered Notes App
+# Munin - AI-Powered Notes App
 
 
 
-Chrisidian is a smart, self-hosted, and private note-taking application that leverages AI to automatically organize your thoughts. Built with a focus on simplicity and privacy, it uses natural language to create, title, and file your notes into appropriate folders. Your data is stored securely in a private GitHub Gist, giving you full ownership and control.
+Munin is a smart, self-hosted, and private note-taking application that leverages AI to automatically organize your thoughts. Built with a focus on simplicity and privacy, it uses natural language to create, title, and file your notes into appropriate folders. Your data is stored securely in a private GitHub Gist, giving you full ownership and control.
 
 ## About The Project
 
-In a world of complex, subscription-based note apps, Chrisidian offers a return to simplicity and ownership. It's a single `index.html` file that you can host for free on GitHub Pages. The core idea is to remove the friction of note-taking: instead of thinking about titles, tags, and folders, you just write. The AI backend handles the organization for you.
+In a world of complex, subscription-based note apps, Munin offers a return to simplicity and ownership. It's a single `index.html` file that you can host for free on GitHub Pages. The core idea is to remove the friction of note-taking: instead of thinking about titles, tags, and folders, you just write. The AI backend handles the organization for you.
 
 This project is perfect for developers, writers, and anyone who wants a fast, intelligent, and private scratchpad for their ideas, accessible from any browser.
 

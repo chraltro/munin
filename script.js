@@ -2001,11 +2001,11 @@ function formatDate(dateString) {
 function applyTheme(themeClassName) {
     document.documentElement.className = '';
     document.documentElement.classList.add(themeClassName);
-    localStorage.setItem('chrisidian_theme', themeClassName);
+    localStorage.setItem('munin_theme', themeClassName);
 }
 
 function loadTheme() {
-    const savedTheme = localStorage.getItem('chrisidian_theme') || 'theme-dusk';
+    const savedTheme = localStorage.getItem('munin_theme') || localStorage.getItem('chrisidian_theme') || 'theme-dusk';
     applyTheme(savedTheme);
 }
 
@@ -2053,11 +2053,11 @@ function applyTypography(prefs) {
 }
 
 function saveTypography() {
-    localStorage.setItem('chrisidian_typography', JSON.stringify(userPreferences));
+    localStorage.setItem('munin_typography', JSON.stringify(userPreferences));
 }
 
 function loadTypography() {
-    const savedPrefs = localStorage.getItem('chrisidian_typography');
+    const savedPrefs = localStorage.getItem('munin_typography') || localStorage.getItem('chrisidian_typography');
     if (savedPrefs) {
         userPreferences = JSON.parse(savedPrefs);
     }

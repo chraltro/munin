@@ -45,7 +45,7 @@ You will need to obtain API keys from the following services:
 
 ### Deployment
 
-The easiest way to use Chrisidian is to deploy it to GitHub Pages.
+The easiest way to use Munin is to deploy it to GitHub Pages.
 
 1.  **Fork this repository** to your own GitHub account.
 2.  Go to your new repository's **Settings** tab.
@@ -78,7 +78,7 @@ The easiest way to use Chrisidian is to deploy it to GitHub Pages.
 -   [ ] Voice-to-text input for commands.
 -   [ ] Data import/export functionality.
 
-See the [open issues](https://github.com/chrisidian/chrisidian/issues) for a full list of proposed features (and known issues).
+See the [open issues](https://github.com/chraltro/munin/issues) for a full list of proposed features (and known issues).
 
 ## License
 

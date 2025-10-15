@@ -1,0 +1,380 @@
+/* ========================================
+   NORRØN UNIFIED HEADER SYSTEM
+   Shared header component for all Wayfinder apps
+   ======================================== */
+
+:root {
+  --header-height: 4rem;           /* 64px */
+  --header-logo-size: 2.5rem;      /* 40px */
+  --header-z-index: 1030;          /* Consistent z-index */
+  --header-bg: rgba(var(--bg-secondary-rgb, 18, 23, 33), 0.95);
+}
+
+/* ========================================
+   BASE HEADER STRUCTURE
+   ======================================== */
+
+.unified-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--header-height);
+  background: var(--header-bg);
+  backdrop-filter: var(--blur);
+  border-bottom: 1px solid var(--border-primary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-6);
+  z-index: var(--header-z-index);
+  transition: var(--transition-base);
+}
+
+/* ========================================
+   BRAND SECTION (Logo + Title)
+   ======================================== */
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-shrink: 0;
+  min-width: 0;
+  text-decoration: none;
+}
+
+.header-logo {
+  width: var(--header-logo-size);
+  height: var(--header-logo-size);
+  object-fit: contain;
+  opacity: 0.9;
+  transition: var(--transition-fast);
+  filter: drop-shadow(0 0 8px rgba(var(--accent-rgb), 0.2));
+  flex-shrink: 0;
+}
+
+.header-logo:hover {
+  opacity: 1;
+  filter: drop-shadow(0 0 12px rgba(var(--accent-rgb), 0.4));
+}
+
+.header-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-serif);
+  letter-spacing: var(--letter-spacing-wide);
+  margin: 0;
+}
+
+/* ========================================
+   ACTIONS SECTION
+   ======================================== */
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+/* Action Button Styles */
+.header-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  white-space: nowrap;
+  font-family: var(--font-sans);
+}
+
+.header-action-btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border-color: var(--border-light);
+  transform: translateY(-1px);
+}
+
+.header-action-btn:active {
+  transform: translateY(0);
+}
+
+.header-action-btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.header-action-btn.primary:hover {
+  background: var(--accent-dark);
+  border-color: var(--accent-dark);
+}
+
+.header-action-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Icon-only buttons */
+.header-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.header-icon-btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.header-icon-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Status indicator */
+.header-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.header-status.success {
+  color: var(--success);
+}
+
+.header-status.error {
+  color: var(--error);
+}
+
+.header-status.warning {
+  color: var(--warning);
+}
+
+/* ========================================
+   USER MENU DROPDOWN
+   ======================================== */
+
+.user-menu {
+  position: relative;
+}
+
+.user-menu-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border: 2px solid var(--border-secondary);
+  border-radius: 50%;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  overflow: hidden;
+}
+
+.user-menu-toggle:hover {
+  border-color: var(--accent);
+  transform: scale(1.05);
+}
+
+.user-menu-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.user-menu-toggle .avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.user-menu-dropdown {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  min-width: 200px;
+  list-style: none;
+  padding: var(--space-2) 0;
+  margin: 0;
+  display: none;
+  z-index: calc(var(--header-z-index) + 10);
+  animation: dropdownFadeIn 0.15s ease-out;
+}
+
+@keyframes dropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.user-menu-dropdown.open {
+  display: block;
+}
+
+.user-menu-dropdown li[role="menuitem"] a,
+.user-menu-dropdown li[role="menuitem"] button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  color: var(--text-secondary);
+  text-decoration: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  font-size: var(--font-size-sm);
+  text-align: left;
+  font-family: var(--font-sans);
+}
+
+.user-menu-dropdown li[role="menuitem"]:hover a,
+.user-menu-dropdown li[role="menuitem"]:hover button {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.user-menu-dropdown li[role="separator"] {
+  height: 1px;
+  background: var(--border-primary);
+  margin: var(--space-2) 0;
+}
+
+/* ========================================
+   RESPONSIVE BEHAVIOR
+   ======================================== */
+
+@media (max-width: 768px) {
+  :root {
+    --header-height: 3.5rem;       /* 56px */
+    --header-logo-size: 2rem;      /* 32px */
+  }
+
+  .unified-header {
+    padding: 0 var(--space-4);
+  }
+
+  .header-title {
+    display: none;
+  }
+
+  .header-title.show-mobile {
+    display: inline;
+    font-size: var(--font-size-base);
+  }
+
+  .header-actions {
+    gap: var(--space-2);
+  }
+
+  .header-action-btn {
+    padding: var(--space-1) var(--space-3);
+    font-size: var(--font-size-xs);
+  }
+
+  .header-action-btn span {
+    display: none;
+  }
+
+  .header-action-btn.show-mobile-text span {
+    display: inline;
+  }
+
+  .header-icon-btn {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .user-menu-toggle {
+    width: 2rem;
+    height: 2rem;
+  }
+}
+
+/* ========================================
+   ACCESSIBILITY
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .unified-header,
+  .header-logo,
+  .header-action-btn,
+  .header-icon-btn,
+  .user-menu-toggle,
+  .user-menu-dropdown {
+    transition: none;
+    animation: none;
+  }
+}
+
+/* Skip to content link */
+.skip-to-content {
+  position: absolute;
+  top: -100%;
+  left: 0;
+  background: var(--accent);
+  color: white;
+  padding: var(--space-3) var(--space-4);
+  text-decoration: none;
+  z-index: calc(var(--header-z-index) + 100);
+  border-radius: 0 0 var(--radius-lg) 0;
+}
+
+.skip-to-content:focus {
+  top: 0;
+}
+
+/* ========================================
+   LAYOUT SPACING
+   ======================================== */
+
+/* Add padding to main content to account for fixed header */
+body.has-unified-header {
+  padding-top: var(--header-height);
+}
+
+body.has-unified-header main {
+  min-height: calc(100vh - var(--header-height));
+}

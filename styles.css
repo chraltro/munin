@@ -2404,3 +2404,37 @@ body {
     --bg-primary: #fefce8; --bg-secondary: #fef9c3; --bg-secondary-rgb: 254, 249, 195; --bg-tertiary: #fef08a; --bg-quaternary: #fde047;
     --text-primary: #422006; --text-secondary: #78350f; --text-tertiary: #92400e; --border: #fef08a; --border-light: #fde047;
 }
+
+/* Wayfinder Logo Link */
+.wayfinder-link {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1100;
+    opacity: 0.6;
+    transition: var(--transition-fast);
+}
+
+.wayfinder-link:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.wayfinder-link img {
+    width: 48px;
+    height: 48px;
+    display: block;
+}
+
+@media (max-width: 1024px) {
+    .wayfinder-link {
+        bottom: 6rem;
+        right: 1rem;
+        z-index: 450;
+    }
+
+    .wayfinder-link img {
+        width: 40px;
+        height: 40px;
+    }
+}

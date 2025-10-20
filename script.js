@@ -1,3 +1,5 @@
+import { initAuth, handleGoogleSignIn, retrieveKeys, saveKeys, getCurrentAuth } from './munin-auth.js';
+
 function debounce(func, delay) {
     let timeout;
     return function (...args) {
@@ -62,9 +64,26 @@ const elements = {
     loginScreen: document.getElementById('loginScreen'),
     mainApp: document.getElementById('mainApp'),
     loginForm: document.getElementById('loginForm'),
+    manualForm: document.getElementById('manualForm'),
     passwordInput: document.getElementById('password'),
     geminiKeyInput: document.getElementById('geminiKey'),
     githubTokenInput: document.getElementById('githubToken'),
+    googleSignInBtn: document.getElementById('googleSignInBtn'),
+    showManualBtn: document.getElementById('showManualBtn'),
+    oauthFlow: document.getElementById('oauthFlow'),
+    loginStatus: document.getElementById('loginStatus'),
+    loginError: document.getElementById('loginError'),
+    loadingSpinner: document.getElementById('loadingSpinner'),
+    settingsBtn: document.getElementById('settingsBtn'),
+    settingsModal: document.getElementById('settingsModal'),
+    settingsForm: document.getElementById('settingsForm'),
+    settingsGeminiKey: document.getElementById('settingsGeminiKey'),
+    settingsGithubToken: document.getElementById('settingsGithubToken'),
+    settingsSaveBtn: document.getElementById('settingsSaveBtn'),
+    settingsCancelBtn: document.getElementById('settingsCancelBtn'),
+    closeSettingsModalBtn: document.getElementById('closeSettingsModalBtn'),
+    settingsError: document.getElementById('settingsError'),
+    settingsStatus: document.getElementById('settingsStatus'),
     logoutBtn: document.getElementById('logoutBtn'),
     commandInput: document.getElementById('commandInput'),
     processBtn: document.getElementById('processBtn'),
@@ -130,6 +149,10 @@ async function initializeApp() {
     loadTheme();
     loadTypography();
     loadViewMode();
+
+    // Initialize Firebase auth
+    await initAuth();
+
     await checkAutoLogin();
     setupEventListeners();
 }
@@ -222,7 +245,15 @@ function updateSaveStatus(message, type = 'success') {
 }
 
 function setupEventListeners() {
-    elements.loginForm.addEventListener('submit', handleLogin);
+    if (elements.loginForm) elements.loginForm.addEventListener('submit', handleLogin);
+    if (elements.manualForm) elements.manualForm.addEventListener('submit', handleManualLogin);
+    if (elements.googleSignInBtn) elements.googleSignInBtn.addEventListener('click', handleGoogleSignInClick);
+    if (elements.showManualBtn) elements.showManualBtn.addEventListener('click', showManualEntry);
+    if (elements.settingsBtn) elements.settingsBtn.addEventListener('click', openSettings);
+    if (elements.settingsModal) elements.settingsModal.addEventListener('click', (e) => { if (e.target === elements.settingsModal) closeSettings(); });
+    if (elements.settingsCancelBtn) elements.settingsCancelBtn.addEventListener('click', closeSettings);
+    if (elements.closeSettingsModalBtn) elements.closeSettingsModalBtn.addEventListener('click', closeSettings);
+    if (elements.settingsForm) elements.settingsForm.addEventListener('submit', handleSettingsSave);
     elements.logoutBtn.addEventListener('click', handleLogout);
     elements.processBtn.addEventListener('click', processCommand);
     elements.commandInput.addEventListener('keydown', handleCommandKeyPress);
@@ -412,6 +443,199 @@ async function hashPassword(password) {
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+function showManualEntry() {
+    if (elements.oauthFlow) elements.oauthFlow.style.display = 'none';
+    if (elements.manualForm) elements.manualForm.style.display = 'block';
+}
+
+async function handleGoogleSignInClick() {
+    try {
+        if (elements.loadingSpinner) elements.loadingSpinner.style.display = 'block';
+        if (elements.oauthFlow) elements.oauthFlow.style.display = 'none';
+        if (elements.loginStatus) {
+            elements.loginStatus.style.display = 'block';
+            elements.loginStatus.textContent = 'Signing in with Google...';
+        }
+        hideError('loginError');
+
+        await handleGoogleSignIn();
+        if (elements.loginStatus) elements.loginStatus.textContent = 'Checking for saved keys...';
+
+        // Try to retrieve saved keys from Firebase
+        const keys = await retrieveKeys();
+
+        if (keys && keys.geminiKey) {
+            // Keys found - auto login
+            state.geminiKey = keys.geminiKey;
+            state.githubToken = keys.githubToken;
+            if (elements.loginStatus) elements.loginStatus.textContent = 'Keys found! Signing you in...';
+
+            // Also save to localStorage for faster future logins
+            localStorage.setItem('munin_auth', JSON.stringify({
+                geminiKey: keys.geminiKey,
+                githubToken: keys.githubToken
+            }));
+
+            setTimeout(() => {
+                state.isAuthenticated = true;
+                showMainApp();
+                loadData();
+            }, 500);
+        } else {
+            // First time - need to enter keys
+            if (elements.loginStatus) elements.loginStatus.textContent = 'Welcome! Please enter your API keys to get started.';
+            if (elements.loadingSpinner) elements.loadingSpinner.style.display = 'none';
+            if (elements.manualForm) elements.manualForm.style.display = 'block';
+        }
+    } catch (error) {
+        console.error('Sign-in error:', error);
+        showError(error.message || 'Sign-in failed', 'loginError');
+        if (elements.loadingSpinner) elements.loadingSpinner.style.display = 'none';
+        if (elements.loginStatus) elements.loginStatus.style.display = 'none';
+        if (elements.oauthFlow) elements.oauthFlow.style.display = 'block';
+    }
+}
+
+async function handleManualLogin(e) {
+    if (e) e.preventDefault();
+
+    const geminiKey = elements.geminiKeyInput.value.trim();
+    const githubToken = elements.githubTokenInput.value.trim();
+
+    if (!geminiKey) {
+        showError('Please enter a Gemini API key', 'loginError');
+        return;
+    }
+
+    try {
+        if (elements.loadingSpinner) elements.loadingSpinner.style.display = 'block';
+        if (elements.manualForm) elements.manualForm.style.display = 'none';
+        if (elements.loginStatus) {
+            elements.loginStatus.style.display = 'block';
+            elements.loginStatus.textContent = 'Validating keys...';
+        }
+        hideError('loginError');
+
+        // Validate Gemini key
+        const testResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${geminiKey}`);
+        if (!testResponse.ok) throw new Error('Invalid Gemini API key');
+
+        if (elements.loginStatus) elements.loginStatus.textContent = 'Saving keys...';
+
+        // Save to Firebase if user is signed in
+        const auth = getCurrentAuth();
+        if (auth.googleUser) {
+            await saveKeys(geminiKey, githubToken || null);
+            if (elements.loginStatus) elements.loginStatus.textContent = 'Keys saved and synced!';
+        } else {
+            // Fallback to localStorage only
+            if (elements.loginStatus) elements.loginStatus.textContent = 'Keys saved locally';
+        }
+
+        // Always save to localStorage for quick access
+        localStorage.setItem('munin_auth', JSON.stringify({
+            geminiKey,
+            githubToken
+        }));
+
+        state.geminiKey = geminiKey;
+        state.githubToken = githubToken;
+        state.isAuthenticated = true;
+
+        setTimeout(() => {
+            showMainApp();
+            loadData();
+        }, 500);
+    } catch (error) {
+        showError(error.message, 'loginError');
+        if (elements.loadingSpinner) elements.loadingSpinner.style.display = 'none';
+        if (elements.loginStatus) elements.loginStatus.style.display = 'none';
+        if (elements.manualForm) elements.manualForm.style.display = 'block';
+    }
+}
+
+function openSettings() {
+    // Pre-fill current values
+    if (elements.settingsGeminiKey) elements.settingsGeminiKey.value = state.geminiKey || '';
+    if (elements.settingsGithubToken) elements.settingsGithubToken.value = state.githubToken || '';
+    if (elements.settingsModal) elements.settingsModal.style.display = 'flex';
+    hideError('settingsError');
+    if (elements.settingsStatus) elements.settingsStatus.style.display = 'none';
+}
+
+function closeSettings() {
+    if (elements.settingsModal) elements.settingsModal.style.display = 'none';
+}
+
+async function handleSettingsSave(e) {
+    e.preventDefault();
+
+    const geminiKey = elements.settingsGeminiKey.value.trim();
+    const githubToken = elements.settingsGithubToken.value.trim();
+
+    if (!geminiKey) {
+        showError('Gemini API key is required', 'settingsError');
+        return;
+    }
+
+    try {
+        if (elements.settingsStatus) {
+            elements.settingsStatus.style.display = 'block';
+            elements.settingsStatus.textContent = 'Validating keys...';
+        }
+        hideError('settingsError');
+
+        // Validate Gemini key
+        const testResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${geminiKey}`);
+        if (!testResponse.ok) throw new Error('Invalid Gemini API key');
+
+        if (elements.settingsStatus) elements.settingsStatus.textContent = 'Saving keys...';
+
+        // Save to Firebase if user is signed in
+        const auth = getCurrentAuth();
+        if (auth.googleUser) {
+            await saveKeys(geminiKey, githubToken || null);
+            if (elements.settingsStatus) elements.settingsStatus.textContent = 'Keys saved and synced to Firebase!';
+        } else {
+            if (elements.settingsStatus) elements.settingsStatus.textContent = 'Keys saved locally';
+        }
+
+        // Always save to localStorage
+        localStorage.setItem('munin_auth', JSON.stringify({
+            geminiKey,
+            githubToken
+        }));
+
+        // Update state
+        state.geminiKey = geminiKey;
+        state.githubToken = githubToken;
+
+        setTimeout(() => {
+            closeSettings();
+            if (elements.settingsStatus) elements.settingsStatus.style.display = 'none';
+            showNotification('Settings saved successfully!', 'success');
+        }, 1500);
+    } catch (error) {
+        showError(error.message, 'settingsError');
+        if (elements.settingsStatus) elements.settingsStatus.style.display = 'none';
+    }
+}
+
+function showError(message, elementId) {
+    const el = document.getElementById(elementId);
+    if (el) {
+        el.innerHTML = `<span>${message}</span>`;
+        el.style.display = 'block';
+    }
+}
+
+function hideError(elementId) {
+    const el = document.getElementById(elementId);
+    if (el) {
+        el.style.display = 'none';
+    }
+}
+
 function handleLogout() {
     localStorage.removeItem('munin_auth');
     state.isAuthenticated = false;
@@ -419,7 +643,7 @@ function handleLogout() {
     state.githubToken = '';
     elements.loginScreen.style.display = 'flex';
     elements.mainApp.style.display = 'none';
-    elements.passwordInput.value = '';
+    if (elements.passwordInput) elements.passwordInput.value = '';
     elements.geminiKeyInput.value = '';
     elements.githubTokenInput.value = '';
 }

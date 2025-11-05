@@ -2438,3 +2438,312 @@ body {
         height: 40px;
     }
 }
+
+/* Export/Import Modal Styles */
+.export-format-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+.export-format-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1.5rem 1rem;
+    background: var(--bg-tertiary);
+    border: 2px solid var(--border);
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: var(--transition);
+    color: var(--text-primary);
+}
+
+.export-format-btn i {
+    font-size: 2rem;
+    color: var(--text-secondary);
+}
+
+.export-format-btn span {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.export-format-btn small {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+}
+
+.export-format-btn:hover {
+    border-color: var(--primary);
+    background: var(--bg-quaternary);
+    transform: translateY(-2px);
+}
+
+.export-format-btn.active {
+    border-color: var(--primary);
+    background: linear-gradient(135deg, rgba(var(--app-accent-rgb), 0.1), rgba(var(--app-accent-rgb), 0.05));
+}
+
+.export-format-btn.active i {
+    color: var(--primary);
+}
+
+.file-input-label {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    background: var(--primary);
+    color: white;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: var(--transition);
+    font-weight: 500;
+}
+
+.file-input-label:hover {
+    background: var(--primary-dark);
+}
+
+.success-box {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid var(--success);
+    color: var(--success);
+    padding: 1rem;
+    border-radius: var(--radius);
+}
+
+/* Keyboard Shortcuts Modal */
+.shortcuts-grid {
+    display: grid;
+    gap: 2rem;
+}
+
+.shortcuts-section h4 {
+    color: var(--primary);
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+    border-bottom: 2px solid var(--primary);
+    padding-bottom: 0.5rem;
+}
+
+.shortcut-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.shortcut-item:last-child {
+    border-bottom: none;
+}
+
+.shortcut-keys {
+    display: flex;
+    gap: 0.25rem;
+    align-items: center;
+}
+
+.shortcut-keys kbd {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-family: 'Fira Code', 'Courier New', monospace;
+    font-size: 0.875rem;
+    font-weight: 600;
+    box-shadow: 0 2px 0 var(--border-light);
+    min-width: 2rem;
+    text-align: center;
+}
+
+.shortcut-desc {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+/* Analytics Dashboard */
+.analytics-dashboard {
+    display: grid;
+    gap: 1.5rem;
+}
+
+.analytics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.analytics-card {
+    background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));
+    padding: 1.5rem;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    transition: var(--transition);
+}
+
+.analytics-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.analytics-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.analytics-card-header h4 {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+}
+
+.analytics-card-header i {
+    color: var(--primary);
+    font-size: 1.5rem;
+}
+
+.analytics-card-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 0.5rem;
+}
+
+.analytics-card-label {
+    color: var(--text-tertiary);
+    font-size: 0.85rem;
+}
+
+.analytics-chart {
+    background: var(--bg-secondary);
+    padding: 1.5rem;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+}
+
+.analytics-chart h4 {
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+}
+
+.analytics-list {
+    list-style: none;
+    padding: 0;
+}
+
+.analytics-list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius);
+    margin-bottom: 0.5rem;
+    transition: var(--transition-fast);
+}
+
+.analytics-list-item:hover {
+    background: var(--bg-quaternary);
+}
+
+.analytics-list-item-name {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.analytics-list-item-value {
+    color: var(--primary);
+    font-weight: 700;
+}
+
+.analytics-bar {
+    width: 100%;
+    height: 8px;
+    background: var(--bg-quaternary);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 0.5rem;
+}
+
+.analytics-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), var(--primary-light));
+    transition: width 0.5s ease;
+}
+
+.analytics-tag-cloud {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 1rem;
+}
+
+.analytics-tag-item {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    transition: var(--transition-fast);
+}
+
+.analytics-tag-item:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    transform: scale(1.05);
+}
+
+.analytics-tag-item .tag-count {
+    margin-left: 0.5rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.analytics-tag-item:hover .tag-count {
+    color: white;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .export-format-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .analytics-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .shortcuts-grid {
+        gap: 1.5rem;
+    }
+
+    .shortcut-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    .header-actions {
+        gap: 0.25rem;
+    }
+
+    .header-actions .icon-btn {
+        padding: 0.5rem;
+    }
+
+    .header-actions .icon-btn i {
+        font-size: 1rem;
+    }
+}

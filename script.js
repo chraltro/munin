@@ -1,4 +1,5 @@
 import { initAuth, handleGoogleSignIn, retrieveKeys, saveKeys, getCurrentAuth } from './munin-auth.js';
+import { initializeFeatures } from './features-integration.js';
 
 function debounce(func, delay) {
     let timeout;
@@ -155,6 +156,32 @@ async function initializeApp() {
 
     await checkAutoLogin();
     setupEventListeners();
+
+    // Initialize new features (export, import, keyboard shortcuts, analytics)
+    initializeFeaturesLater();
+}
+
+function initializeFeaturesLater() {
+    // Initialize after main app is loaded
+    setTimeout(() => {
+        if (state.isAuthenticated) {
+            const functions = {
+                createNewNote: () => handleNewNote(),
+                saveCurrentNote: () => handleSaveNote(),
+                closeEditor: () => handleCloseEditor(),
+                toggleEditMode: () => switchToEditMode(),
+                refreshUI: () => {
+                    updateAllTags();
+                    renderFolders();
+                    renderNotes();
+                    renderTags();
+                },
+                saveToGist: () => saveNotesToGist()
+            };
+
+            window.muninFeatures = initializeFeatures(state, elements, functions);
+        }
+    }, 1000);
 }
 
 function migrateToMunin() {

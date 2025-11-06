@@ -2409,7 +2409,7 @@ body {
 .wayfinder-link {
     position: fixed;
     bottom: 20px;
-    right: 20px;
+    left: 20px;  /* Changed from right to left to avoid overlap */
     z-index: 1100;
     opacity: 0.6;
     transition: var(--transition-fast);
@@ -2429,13 +2429,26 @@ body {
 @media (max-width: 1024px) {
     .wayfinder-link {
         bottom: 6rem;
-        right: 1rem;
+        left: 1rem;  /* Changed from right to left */
         z-index: 450;
     }
 
     .wayfinder-link img {
         width: 40px;
         height: 40px;
+    }
+}
+
+/* Ensure toggle header button doesn't overlap */
+.fab-btn {
+    right: 1.5rem;
+    bottom: 1.5rem;
+}
+
+@media (max-width: 1024px) {
+    .fab-btn {
+        right: 1rem;
+        bottom: 1rem;
     }
 }
 

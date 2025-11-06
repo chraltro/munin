@@ -262,9 +262,9 @@ export function addLinkAutocomplete(editor, notes) {
         const value = editor.value;
         const cursorPos = editor.selectionStart;
 
-        // Find the start of the [[ sequence
+        // Find the start of the [ sequence
         let startPos = cursorPos - 1;
-        while (startPos >= 0 && value.substring(startPos, startPos + 2) !== '[[') {
+        while (startPos >= 0 && value[startPos] !== '[') {
             startPos--;
         }
 
@@ -327,12 +327,14 @@ export function addLinkAutocomplete(editor, notes) {
         const value = editor.value;
         const cursorPos = editor.selectionStart;
 
-        // Check if user is typing [[ for note link
-        if (cursorPos >= 2) {
+        // Check if user is typing [ for note link (single bracket trigger)
+        if (cursorPos >= 1) {
             const beforeCursor = value.substring(0, cursorPos);
-            const linkStartMatch = beforeCursor.match(/\[\[([^\]]*?)$/);
+            // Match single [ at the start of a potential link
+            // Don't trigger if it's already part of a markdown link [text](url)
+            const linkStartMatch = beforeCursor.match(/\[([^\]\(]*?)$/);
 
-            if (linkStartMatch) {
+            if (linkStartMatch && !beforeCursor.match(/\[[^\]]+\]\([^\)]*$/)) {
                 const query = linkStartMatch[1];
                 showAutocomplete(query, cursorPos);
             } else {

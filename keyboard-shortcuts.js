@@ -123,22 +123,23 @@ export class KeyboardShortcutManager {
 export function initializeShortcuts(callbacks) {
     const manager = new KeyboardShortcutManager();
 
-    // General shortcuts
-    manager.register('Ctrl+N', callbacks.newNote, 'New note');
+    // General shortcuts (using browser-safe combinations)
+    manager.register('Alt+N', callbacks.newNote, 'New note');
     manager.register('Ctrl+S', callbacks.saveNote, 'Save note');
-    manager.register('Ctrl+F', callbacks.focusSearch, 'Search notes');
+    manager.register('Ctrl+Shift+F', callbacks.focusSearch, 'Search notes');
     manager.register('Ctrl+K', callbacks.showCommandPalette, 'Command palette');
     manager.register('?', callbacks.showShortcuts, 'Show shortcuts');
     manager.register('Escape', callbacks.closeEditor, 'Close editor');
 
-    // Navigation shortcuts
-    manager.register('Ctrl+E', callbacks.toggleEditMode, 'Toggle edit mode');
-    manager.register('Ctrl+,', callbacks.openSettings, 'Open settings');
+    // Navigation shortcuts (browser-safe)
+    manager.register('Alt+E', callbacks.toggleEditMode, 'Toggle edit mode');
+    manager.register('Alt+P', callbacks.togglePreview, 'Toggle preview');
+    manager.register('Alt+,', callbacks.openSettings, 'Open settings');
 
     // Data shortcuts
-    manager.register('Ctrl+Shift+E', callbacks.exportNotes, 'Export notes');
-    manager.register('Ctrl+Shift+I', callbacks.importNotes, 'Import notes');
-    manager.register('Ctrl+Shift+A', callbacks.showAnalytics, 'Show analytics');
+    manager.register('Alt+Shift+E', callbacks.exportNotes, 'Export notes');
+    manager.register('Alt+Shift+I', callbacks.importNotes, 'Import notes');
+    manager.register('Alt+Shift+A', callbacks.showAnalytics, 'Show analytics');
 
     return manager;
 }

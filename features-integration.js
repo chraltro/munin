@@ -24,6 +24,12 @@ import {
     exportAnalytics
 } from './analytics.js';
 
+import {
+    showHelp,
+    addHelpButton,
+    helpSystemCSS
+} from './help-system.js';
+
 /**
  * Initialize all new features
  * @param {Object} state - Application state
@@ -31,8 +37,9 @@ import {
  * @param {Object} functions - Application functions
  */
 export function initializeFeatures(state, elements, functions) {
-    // Inject command palette CSS
+    // Inject CSS
     injectCSS(commandPaletteCSS);
+    injectCSS(helpSystemCSS);
 
     // Initialize keyboard shortcuts
     const shortcutCallbacks = {
@@ -43,6 +50,7 @@ export function initializeFeatures(state, elements, functions) {
         showShortcuts: () => showKeyboardShortcutsModal(),
         closeEditor: () => functions.closeEditor(),
         toggleEditMode: () => functions.toggleEditMode(),
+        togglePreview: () => functions.togglePreview ? functions.togglePreview() : functions.toggleEditMode(),
         openSettings: () => elements.settingsBtn?.click(),
         exportNotes: () => showExportModal(),
         importNotes: () => showImportModal(),
@@ -58,11 +66,18 @@ export function initializeFeatures(state, elements, functions) {
     // Setup event listeners for new UI elements
     setupEventListeners(state, elements, functions, commandPalette);
 
+    // Add help button
+    addHelpButton();
+
+    // Add F1 shortcut for help
+    shortcutManager.register('F1', () => showHelp(), 'Show help');
+
     // Return API for external use
     return {
         shortcutManager,
         commandPalette,
-        updateCommands: () => commandPalette.updateCommands(createCommands(state, functions))
+        updateCommands: () => commandPalette.updateCommands(createCommands(state, functions)),
+        showHelp
     };
 }
 
@@ -139,6 +154,14 @@ function createCommands(state, functions) {
             shortcut: '?',
             keywords: ['shortcuts', 'keys', 'help'],
             action: () => showKeyboardShortcutsModal()
+        },
+        {
+            name: 'Help Center',
+            description: 'Open help and documentation',
+            icon: 'fas fa-question-circle',
+            shortcut: 'F1',
+            keywords: ['help', 'guide', 'docs', 'tutorial'],
+            action: () => showHelp()
         },
         {
             name: 'Settings',

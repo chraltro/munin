@@ -162,26 +162,27 @@ async function initializeApp() {
 }
 
 function initializeFeaturesLater() {
-    // Initialize after main app is loaded
-    setTimeout(() => {
-        if (state.isAuthenticated) {
-            const functions = {
-                createNewNote: () => handleNewNote(),
-                saveCurrentNote: () => handleSaveNote(),
-                closeEditor: () => handleCloseEditor(),
-                toggleEditMode: () => switchToEditMode(),
-                refreshUI: () => {
-                    updateAllTags();
-                    renderFolders();
-                    renderNotes();
-                    renderTags();
-                },
-                saveToGist: () => saveNotesToGist()
-            };
+    // Initialize features without delay for better performance
+    if (state.isAuthenticated) {
+        const functions = {
+            createNewNote: () => handleNewNote(),
+            saveCurrentNote: () => handleSaveNote(),
+            closeEditor: () => handleCloseEditor(),
+            toggleEditMode: () => switchToEditMode(),
+            refreshUI: () => {
+                updateAllTags();
+                renderFolders();
+                renderNotes();
+                renderTags();
+            },
+            saveToGist: () => saveNotesToGist()
+        };
 
+        // Initialize in next tick to avoid blocking
+        requestAnimationFrame(() => {
             window.muninFeatures = initializeFeatures(state, elements, functions);
-        }
-    }, 1000);
+        });
+    }
 }
 
 function migrateToMunin() {

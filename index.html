@@ -113,6 +113,18 @@
                     <i class="fas fa-check-circle"></i>
                     <span>Saved</span>
                 </div>
+                <button id="analyticsBtn" class="icon-btn" title="Analytics Dashboard (Ctrl+Shift+A)">
+                    <i class="fas fa-chart-bar"></i>
+                </button>
+                <button id="exportBtn" class="icon-btn" title="Export Notes (Ctrl+Shift+E)">
+                    <i class="fas fa-download"></i>
+                </button>
+                <button id="importBtn" class="icon-btn" title="Import Notes (Ctrl+Shift+I)">
+                    <i class="fas fa-upload"></i>
+                </button>
+                <button id="keyboardShortcutsBtn" class="icon-btn" title="Keyboard Shortcuts (?)">
+                    <i class="fas fa-keyboard"></i>
+                </button>
                 <button id="settingsBtn" class="icon-btn" title="Settings">
                     <i class="fas fa-cog"></i>
                 </button>
@@ -370,6 +382,210 @@
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div id="exportModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-download"></i> Export Notes</h3>
+                <button id="closeExportModalBtn" class="modal-close-btn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="export-options">
+                    <p style="margin-bottom: 1.5rem; color: var(--text-secondary);">Choose export format and options:</p>
+
+                    <div class="form-group">
+                        <label>Export Format</label>
+                        <div class="export-format-grid">
+                            <button class="export-format-btn active" data-format="json">
+                                <i class="fas fa-code"></i>
+                                <span>JSON</span>
+                                <small>Structured data</small>
+                            </button>
+                            <button class="export-format-btn" data-format="markdown">
+                                <i class="fab fa-markdown"></i>
+                                <span>Markdown</span>
+                                <small>Plain text</small>
+                            </button>
+                            <button class="export-format-btn" data-format="html">
+                                <i class="fab fa-html5"></i>
+                                <span>HTML</span>
+                                <small>Web page</small>
+                            </button>
+                            <button class="export-format-btn" data-format="csv">
+                                <i class="fas fa-table"></i>
+                                <span>CSV</span>
+                                <small>Spreadsheet</small>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="exportGroupByFolder" checked>
+                            Group by folder
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="exportIncludeTOC" checked>
+                            Include table of contents
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="exportCurrentFolderOnly">
+                            Export current folder only
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <button id="exportExecuteBtn" class="login-btn" style="width: 100%;">
+                            <i class="fas fa-download"></i>
+                            Export
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Modal -->
+    <div id="importModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-upload"></i> Import Notes</h3>
+                <button id="closeImportModalBtn" class="modal-close-btn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="importError" class="alert-box" style="display: none; margin-bottom: 1rem;"></div>
+                <div id="importSuccess" class="success-box" style="display: none; margin-bottom: 1rem;"></div>
+
+                <p style="margin-bottom: 1rem; color: var(--text-secondary);">
+                    Import notes from a JSON file exported from Munin.
+                </p>
+
+                <div class="form-group">
+                    <label for="importFileInput" class="file-input-label">
+                        <i class="fas fa-file-upload"></i>
+                        Choose File
+                    </label>
+                    <input type="file" id="importFileInput" accept=".json" style="display: none;">
+                    <span id="importFileName" style="display: block; margin-top: 0.5rem; color: var(--text-tertiary); font-size: 0.9rem;">
+                        No file selected
+                    </span>
+                </div>
+
+                <div class="form-group" style="margin-top: 1.5rem;">
+                    <label>
+                        <input type="checkbox" id="importMergeMode" checked>
+                        Merge with existing notes (keep duplicates)
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <button id="importExecuteBtn" class="login-btn" style="width: 100%;" disabled>
+                        <i class="fas fa-upload"></i>
+                        Import
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Keyboard Shortcuts Modal -->
+    <div id="keyboardShortcutsModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-keyboard"></i> Keyboard Shortcuts</h3>
+                <button id="closeKeyboardShortcutsBtn" class="modal-close-btn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="shortcuts-grid">
+                    <div class="shortcuts-section">
+                        <h4>General</h4>
+                        <div class="shortcut-item">
+                            <span class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>K</kbd></span>
+                            <span class="shortcut-desc">Command palette</span>
+                        </div>
+                        <div class="shortcut-item">
+                            <span class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>N</kbd></span>
+                            <span class="shortcut-desc">New note</span>
+                        </div>
+                        <div class="shortcut-item">
+                            <span class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>S</kbd></span>
+                            <span class="shortcut-desc">Save note</span>
+                        </div>
+                        <div class="shortcut-item">
+                            <span class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>F</kbd></span>
+                            <span class="shortcut-desc">Search notes</span>
+                        </div>
+                        <div class="shortcut-item">
+                            <span class="shortcut-keys"><kbd>?</kbd></span>
+                            <span class="shortcut-desc">Show shortcuts</span>
+                        </div>
+                    </div>
+
+                    <div class="shortcuts-section">
+                        <h4>Navigation</h4>
+                        <div class="shortcut-item">
+                            <span class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>E</kbd></span>
+                            <span class="shortcut-desc">Toggle edit mode</span>
+                        </div>
+                        <div class="shortcut-item">
+                            <span class="shortcut-keys"><kbd>Esc</kbd></span>
+                            <span class="shortcut-desc">Close editor</span>
+                        </div>
+                        <div class="shortcut-item">
+                            <span class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>,</kbd></span>
+                            <span class="shortcut-desc">Settings</span>
+                        </div>
+                    </div>
+
+                    <div class="shortcuts-section">
+                        <h4>Data</h4>
+                        <div class="shortcut-item">
+                            <span class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>E</kbd></span>
+                            <span class="shortcut-desc">Export notes</span>
+                        </div>
+                        <div class="shortcut-item">
+                            <span class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>I</kbd></span>
+                            <span class="shortcut-desc">Import notes</span>
+                        </div>
+                        <div class="shortcut-item">
+                            <span class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>A</kbd></span>
+                            <span class="shortcut-desc">Analytics</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analytics Dashboard Modal -->
+    <div id="analyticsModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-chart-bar"></i> Analytics Dashboard</h3>
+                <button id="closeAnalyticsBtn" class="modal-close-btn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="analyticsContent" class="analytics-dashboard">
+                    <!-- Populated by JavaScript -->
                 </div>
             </div>
         </div>

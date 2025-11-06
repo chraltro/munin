@@ -3,7 +3,7 @@
  * Provides offline functionality and caching for GitHub Gist integration
  */
 
-const CACHE_NAME = 'munin-v1';
+const CACHE_NAME = 'munin-v2';
 const STATIC_CACHE_URLS = [
     './',
     './index.html',
@@ -12,6 +12,14 @@ const STATIC_CACHE_URLS = [
     './config.js',
     './templates.js',
     './prompts.js',
+    './munin-auth.js',
+    './export-utils.js',
+    './keyboard-shortcuts.js',
+    './analytics.js',
+    './features-integration.js',
+    './note-linking.js',
+    './advanced-search.js',
+    './markdown-enhancements.js',
     './shared/theme.css',
     './logo.svg',
     './favicon.ico',

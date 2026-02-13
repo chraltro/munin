@@ -1,0 +1,7 @@
+node_modules/
+Assets/
+Documentation/
+*.svg
+*.ico
+*.png
+*.webmanifest

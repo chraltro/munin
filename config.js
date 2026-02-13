@@ -1,9 +1,21 @@
+/**
+ * Munin Application Configuration
+ *
+ * SECURITY NOTE: The passwordHash below is the default.
+ * Users MUST change it before deploying. Generate a new hash:
+ *   crypto.subtle.digest('SHA-256', new TextEncoder().encode('your-password'))
+ *     .then(buf => Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join(''))
+ */
 const APP_CONFIG = {
     passwordHash: '7f72131af35c82819bb44f256e34419f381fdeb465b1727d153b58030fabbcb7',
     gistFilename: 'munin-notes.json',
     embeddingFilename: 'munin-notes-embeddings.json',
     embeddingModel: 'text-embedding-004',
-    templateFolder: 'Templates'
+    templateFolder: 'Templates',
+    maxNoteSize: 100000,
+    saveDebounceMs: 2000,
+    searchDebounceMs: 300,
+    notificationDurationMs: 3000,
 };
 
 const THEMES = [

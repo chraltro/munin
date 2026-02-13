@@ -1,38 +1,118 @@
+/* ═══════════════════════════════════════════════════════════════
+   Munin Styles v2.1
+   ═══════════════════════════════════════════════════════════════ */
+
 html {
     overflow-x: hidden;
 }
 
+/* ─── Design Tokens ─────────────────────────────────────────── */
+
 :root {
+    /* Brand colors */
     --primary: #E63946;
     --primary-dark: #CC2936;
     --primary-light: #F05A68;
     --secondary: #8b5cf6;
+
+    /* Semantic colors */
     --success: #10b981;
     --warning: #f59e0b;
     --danger: #ef4444;
+
+    /* Surface colors */
     --bg-primary: #0f172a;
     --bg-secondary: #1e293b;
     --bg-secondary-rgb: 30, 41, 59;
     --bg-tertiary: #334155;
     --bg-quaternary: #475569;
+
+    /* Text colors */
     --text-primary: #f1f5f9;
     --text-secondary: #cbd5e1;
     --text-tertiary: #94a3b8;
+
+    /* Borders */
     --border: #334155;
     --border-light: #475569;
+
+    /* Elevation */
     --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
     --blur: blur(8px);
+
+    /* Spacing & layout */
     --radius: 0.5rem;
     --radius-lg: 0.75rem;
     --radius-xl: 1rem;
+
+    /* Motion */
     --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-fast: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Typography (user-configurable) */
     --user-font-family: 'Inter', sans-serif;
     --user-font-size: 16px;
     --user-line-height: 1.6;
+
+    /* Focus ring */
+    --focus-ring: 0 0 0 3px rgba(230, 57, 70, 0.4);
 }
+
+/* ─── Accessibility ─────────────────────────────────────────── */
+
+/* Screen-reader only content */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+}
+
+/* Skip to main content link */
+.skip-link {
+    position: absolute;
+    top: -100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--primary);
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0 0 var(--radius) var(--radius);
+    z-index: 100000;
+    text-decoration: none;
+    font-weight: 600;
+    transition: top 0.2s ease;
+}
+
+.skip-link:focus {
+    top: 0;
+}
+
+/* Focus visible styles for keyboard navigation */
+:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* ─── Reset ─────────────────────────────────────────────────── */
 
 * {
     margin: 0;

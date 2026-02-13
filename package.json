@@ -1,0 +1,33 @@
+{
+  "name": "munin",
+  "version": "2.1.0",
+  "description": "AI-Powered Markdown Notes - Knowledge Base Keeper",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "eslint *.js lib/*.js --ignore-pattern sw.js",
+    "lint:fix": "eslint *.js lib/*.js --fix --ignore-pattern sw.js",
+    "format": "prettier --write '*.{js,css,html,json}'",
+    "format:check": "prettier --check '*.{js,css,html,json}'",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "validate": "npm run lint && npm run test"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "eslint": "^9.0.0",
+    "globals": "^15.0.0",
+    "jsdom": "^25.0.0",
+    "prettier": "^3.4.0",
+    "vitest": "^2.1.0"
+  },
+  "keywords": [
+    "notes",
+    "markdown",
+    "ai",
+    "knowledge-base",
+    "github-gist"
+  ],
+  "license": "MIT"
+}

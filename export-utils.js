@@ -533,23 +533,51 @@ function getHTMLExportStyles(theme) {
  */
 export function importFromJSON(jsonString) {
     try {
+        if (typeof jsonString !== 'string' || jsonString.trim().length === 0) {
+            throw new Error('Import data is empty');
+        }
+
+        // Guard against excessively large imports (10MB limit)
+        if (jsonString.length > 10 * 1024 * 1024) {
+            throw new Error('Import file is too large (max 10MB)');
+        }
+
         const data = JSON.parse(jsonString);
 
         // Validate structure
+        if (!data || typeof data !== 'object') {
+            throw new Error('Invalid import file: not a JSON object');
+        }
+
         if (!data.notes || !Array.isArray(data.notes)) {
             throw new Error('Invalid import file: missing notes array');
         }
 
-        // Validate each note has required fields
-        data.notes.forEach((note, index) => {
-            if (!note.title || !note.content) {
-                throw new Error(`Invalid note at index ${index}: missing title or content`);
+        // Validate and sanitize each note
+        const sanitizedNotes = data.notes.map((note, index) => {
+            if (!note.title || typeof note.title !== 'string') {
+                throw new Error(`Invalid note at index ${index}: missing or invalid title`);
             }
+            if (typeof note.content !== 'string') {
+                throw new Error(`Invalid note at index ${index}: missing or invalid content`);
+            }
+
+            // Sanitize: ensure expected types
+            return {
+                id: typeof note.id === 'number' ? note.id : Date.now() + index,
+                title: note.title.trim().substring(0, 500),
+                content: note.content,
+                folder: typeof note.folder === 'string' ? note.folder.trim() : 'Imported',
+                tags: Array.isArray(note.tags) ? note.tags.filter(t => typeof t === 'string').map(t => t.trim()) : [],
+                created: note.created || new Date().toISOString(),
+                modified: note.modified || new Date().toISOString(),
+                ...(note.servings ? { servings: Number(note.servings) } : {}),
+            };
         });
 
         return {
             success: true,
-            notes: data.notes,
+            notes: sanitizedNotes,
             metadata: {
                 exportDate: data.exportDate,
                 version: data.version,

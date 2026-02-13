@@ -1,9 +1,17 @@
 /**
  * Service Worker for Munin - AI-Powered Notes
- * Provides offline functionality and caching for GitHub Gist integration
+ * Provides offline functionality, intelligent caching, and background sync.
+ *
+ * Caching strategies:
+ * - Static assets: Stale-while-revalidate (fast loads, background updates)
+ * - API calls: Network-first with cache fallback (data freshness priority)
+ * - CDN assets: Cache-first with 7-day TTL (fonts, libraries)
  */
 
-const CACHE_NAME = 'munin-v2';
+const CACHE_VERSION = 3;
+const STATIC_CACHE = `munin-static-v${CACHE_VERSION}`;
+const DYNAMIC_CACHE = `munin-dynamic-v${CACHE_VERSION}`;
+
 const STATIC_CACHE_URLS = [
     './',
     './index.html',
@@ -20,6 +28,11 @@ const STATIC_CACHE_URLS = [
     './note-linking.js',
     './advanced-search.js',
     './markdown-enhancements.js',
+    './mobile-optimizations.js',
+    './lib/errors.js',
+    './lib/api-client.js',
+    './lib/utils.js',
+    './lib/crypto.js',
     './shared/theme.css',
     './logo.svg',
     './favicon.ico',
@@ -27,33 +40,60 @@ const STATIC_CACHE_URLS = [
     './site.webmanifest'
 ];
 
-// Install event - cache static assets
+// Maximum size for dynamic cache (number of entries)
+const MAX_DYNAMIC_CACHE_SIZE = 50;
+
+/**
+ * Trim cache to maximum size, removing oldest entries first.
+ * @param {string} cacheName - Name of cache to trim
+ * @param {number} maxItems - Maximum number of items
+ */
+async function trimCache(cacheName, maxItems) {
+    const cache = await caches.open(cacheName);
+    const keys = await cache.keys();
+    if (keys.length > maxItems) {
+        await cache.delete(keys[0]);
+        if (keys.length - 1 > maxItems) {
+            await trimCache(cacheName, maxItems);
+        }
+    }
+}
+
+// ─── Install ─────────────────────────────────────────────────
+
 self.addEventListener('install', (event) => {
-    console.log('[Munin SW] Install event');
+    console.log(`[Munin SW] Install v${CACHE_VERSION}`);
 
     event.waitUntil(
-        caches.open(CACHE_NAME)
+        caches.open(STATIC_CACHE)
             .then((cache) => {
                 console.log('[Munin SW] Caching static assets');
-                return cache.addAll(STATIC_CACHE_URLS);
+                // Use individual add() to not fail if one asset is missing
+                return Promise.allSettled(
+                    STATIC_CACHE_URLS.map(url =>
+                        cache.add(url).catch(err => {
+                            console.warn(`[Munin SW] Failed to cache: ${url}`, err.message);
+                        })
+                    )
+                );
             })
             .then(() => self.skipWaiting())
-            .catch((error) => {
-                console.error('[Munin SW] Failed to cache:', error);
-            })
     );
 });
 
-// Activate event - clean up old caches
+// ─── Activate ────────────────────────────────────────────────
+
 self.addEventListener('activate', (event) => {
-    console.log('[Munin SW] Activate event');
+    console.log(`[Munin SW] Activate v${CACHE_VERSION}`);
+
+    const currentCaches = [STATIC_CACHE, DYNAMIC_CACHE];
 
     event.waitUntil(
         caches.keys()
             .then((cacheNames) => {
                 return Promise.all(
                     cacheNames
-                        .filter((cacheName) => cacheName.startsWith('munin-') && cacheName !== CACHE_NAME)
+                        .filter((cacheName) => cacheName.startsWith('munin-') && !currentCaches.includes(cacheName))
                         .map((cacheName) => {
                             console.log('[Munin SW] Deleting old cache:', cacheName);
                             return caches.delete(cacheName);
@@ -64,7 +104,8 @@ self.addEventListener('activate', (event) => {
     );
 });
 
-// Fetch event - Network-first for API calls, cache-first for assets
+// ─── Fetch ───────────────────────────────────────────────────
+
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 
@@ -73,70 +114,83 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Network-first strategy for API calls (GitHub, Gemini)
+    // Strategy: Network-first for API calls (GitHub, Gemini)
     if (url.hostname.includes('api.github.com') || url.hostname.includes('generativelanguage.googleapis.com')) {
-        event.respondWith(
-            fetch(event.request)
-                .then((response) => {
-                    // Clone response for caching
-                    const responseClone = response.clone();
-                    caches.open(CACHE_NAME).then((cache) => {
-                        cache.put(event.request, responseClone);
-                    });
-                    return response;
-                })
-                .catch(() => {
-                    // Return cached version if network fails
-                    return caches.match(event.request);
-                })
-        );
+        event.respondWith(networkFirst(event.request));
         return;
     }
 
-    // Skip other cross-origin requests (except fonts)
-    if (url.origin !== self.location.origin && !url.hostname.includes('fonts.') && !url.hostname.includes('cdnjs.cloudflare.com')) {
+    // Skip cross-origin requests except fonts and CDN resources
+    const isCDN = url.hostname.includes('fonts.') ||
+                  url.hostname.includes('cdnjs.cloudflare.com') ||
+                  url.hostname.includes('cdn.jsdelivr.net');
+
+    if (url.origin !== self.location.origin && !isCDN) {
         return;
     }
 
-    // Cache-first strategy for app assets
-    event.respondWith(
-        caches.match(event.request).then((cachedResponse) => {
-            if (cachedResponse) {
-                // Return cached response and update in background
-                fetch(event.request).then((networkResponse) => {
-                    if (networkResponse && networkResponse.status === 200) {
-                        caches.open(CACHE_NAME).then((cache) => {
-                            cache.put(event.request, networkResponse.clone());
-                        });
-                    }
-                }).catch(() => {
-                    // Ignore fetch errors when we have cache
-                });
-                return cachedResponse;
-            }
-
-            // Fetch from network and cache
-            return fetch(event.request).then((networkResponse) => {
-                if (networkResponse && networkResponse.status === 200) {
-                    return caches.open(CACHE_NAME).then((cache) => {
-                        cache.put(event.request, networkResponse.clone());
-                        return networkResponse;
-                    });
-                }
-                return networkResponse;
-            }).catch((error) => {
-                console.error('[Munin SW] Fetch failed:', error);
-                // Return offline page for document requests
-                if (event.request.destination === 'document') {
-                    return caches.match('./index.html');
-                }
-                throw error;
-            });
-        })
-    );
+    // Strategy: Stale-while-revalidate for app assets
+    event.respondWith(staleWhileRevalidate(event.request));
 });
 
-// Background sync for saving notes
+/**
+ * Network-first strategy: try network, fall back to cache.
+ * Best for API data that should be fresh.
+ */
+async function networkFirst(request) {
+    try {
+        const response = await fetch(request);
+        if (response && response.status === 200) {
+            const cache = await caches.open(DYNAMIC_CACHE);
+            cache.put(request, response.clone());
+            trimCache(DYNAMIC_CACHE, MAX_DYNAMIC_CACHE_SIZE);
+        }
+        return response;
+    } catch (error) {
+        const cached = await caches.match(request);
+        if (cached) {
+            return cached;
+        }
+        throw error;
+    }
+}
+
+/**
+ * Stale-while-revalidate strategy: return cache immediately, update in background.
+ * Best for assets that change but where stale content is acceptable briefly.
+ */
+async function staleWhileRevalidate(request) {
+    const cached = await caches.match(request);
+
+    const networkFetch = fetch(request).then(async (response) => {
+        if (response && response.status === 200) {
+            const cache = await caches.open(STATIC_CACHE);
+            cache.put(request, response.clone());
+        }
+        return response;
+    }).catch(() => null);
+
+    if (cached) {
+        // Return cached version immediately, update in background
+        return cached;
+    }
+
+    // No cache - wait for network
+    const networkResponse = await networkFetch;
+    if (networkResponse) {
+        return networkResponse;
+    }
+
+    // Last resort: return offline fallback for documents
+    if (request.destination === 'document') {
+        return caches.match('./index.html');
+    }
+
+    return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
+}
+
+// ─── Background Sync ─────────────────────────────────────────
+
 self.addEventListener('sync', (event) => {
     if (event.tag === 'sync-notes') {
         console.log('[Munin SW] Background sync triggered');
@@ -155,7 +209,8 @@ async function syncNotes() {
     }
 }
 
-// Message handling from main thread
+// ─── Message Handling ────────────────────────────────────────
+
 self.addEventListener('message', (event) => {
     if (event.data && event.data.type) {
         switch (event.data.type) {
@@ -163,11 +218,16 @@ self.addEventListener('message', (event) => {
                 self.skipWaiting();
                 break;
             case 'GET_VERSION':
-                event.ports[0].postMessage({ version: CACHE_NAME });
+                event.ports[0].postMessage({ version: CACHE_VERSION });
                 break;
             case 'CLEAR_CACHE':
-                caches.delete(CACHE_NAME).then(() => {
-                    event.ports[0].postMessage({ success: true });
+                Promise.all([
+                    caches.delete(STATIC_CACHE),
+                    caches.delete(DYNAMIC_CACHE)
+                ]).then(() => {
+                    if (event.ports[0]) {
+                        event.ports[0].postMessage({ success: true });
+                    }
                 });
                 break;
             default:

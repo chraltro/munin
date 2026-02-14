@@ -8,9 +8,13 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Node (if you add build tools later)
+# Node
 node_modules/
 npm-debug.log*
+package-lock.json
+
+# Test coverage
+coverage/
 
 # Environment variables (never commit these!)
 .env

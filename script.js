@@ -200,7 +200,9 @@ function migrateToMunin() {
                 // Keep old keys for now to avoid surprises; can be removed later
             }
         }
-    } catch (_) { /* noop */ }
+    } catch (e) {
+        console.warn('[Munin] Failed to migrate legacy storage keys:', e.message);
+    }
 }
 
 function saveViewMode() {
@@ -225,12 +227,19 @@ function checkSecurityWarning() {
 async function checkAutoLogin() {
     const savedAuth = localStorage.getItem('munin_auth') || localStorage.getItem('chrisidian_auth');
     if (savedAuth) {
-        const auth = JSON.parse(savedAuth);
-        state.geminiKey = auth.geminiKey;
-        state.githubToken = auth.githubToken;
-        state.isAuthenticated = true;
-        showMainApp();
-        await loadData();
+        try {
+            const auth = JSON.parse(savedAuth);
+            if (auth && auth.geminiKey) {
+                state.geminiKey = auth.geminiKey;
+                state.githubToken = auth.githubToken || '';
+                state.isAuthenticated = true;
+                showMainApp();
+                await loadData();
+            }
+        } catch (e) {
+            console.error('Failed to parse saved auth data:', e);
+            localStorage.removeItem('munin_auth');
+        }
     }
 }
 
@@ -651,7 +660,10 @@ async function handleSettingsSave(e) {
 function showError(message, elementId) {
     const el = document.getElementById(elementId);
     if (el) {
-        el.innerHTML = `<span>${message}</span>`;
+        el.textContent = '';
+        const span = document.createElement('span');
+        span.textContent = message;
+        el.appendChild(span);
         el.style.display = 'block';
     }
 }

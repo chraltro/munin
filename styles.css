@@ -347,7 +347,7 @@ body {
 }
 
 .app-container.editor-fullscreen .main-content {
-    grid-template-columns: 0fr 0fr 1fr;
+    grid-template-columns: 1fr;
 }
 
 .app-container.editor-fullscreen .editor-panel {

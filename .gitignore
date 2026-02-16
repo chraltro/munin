@@ -11,7 +11,6 @@ Thumbs.db
 # Node
 node_modules/
 npm-debug.log*
-package-lock.json
 
 # Test coverage
 coverage/

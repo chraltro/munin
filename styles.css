@@ -2513,7 +2513,7 @@ body {
 .wayfinder-link {
     position: fixed;
     bottom: 20px;
-    right: 20px;
+    right: 80px;
     z-index: 1100;
     opacity: 0.6;
     transition: var(--transition-fast);
@@ -2533,7 +2533,7 @@ body {
 @media (max-width: 1024px) {
     .wayfinder-link {
         bottom: 6rem;
-        right: 1rem;
+        right: 4.5rem;
         z-index: 450;
     }
 

@@ -847,7 +847,7 @@ body {
 .notes-list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 1.5rem;
+    gap: 2rem;
 }
 
 .notes-list.list-view {
@@ -2270,11 +2270,11 @@ body {
 
     .notes-list {
         grid-template-columns: 1fr;
-        gap: 1rem;
+        gap: 1.5rem;
     }
 
     .note-card {
-        padding: 1rem;
+        padding: 1.25rem;
     }
 
     .note-card h3 {

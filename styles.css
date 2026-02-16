@@ -853,7 +853,7 @@ body {
 .notes-list.list-view {
     display: flex;
     flex-direction: column;
-    gap: 0;
+    gap: 0.5rem;
     border: 1px solid var(--border);
     border-radius: var(--radius);
     overflow: hidden;

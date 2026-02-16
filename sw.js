@@ -8,7 +8,7 @@
  * - CDN assets: Cache-first with 7-day TTL (fonts, libraries)
  */
 
-const CACHE_VERSION = 5;
+const CACHE_VERSION = 6;
 const STATIC_CACHE = `munin-static-v${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `munin-dynamic-v${CACHE_VERSION}`;
 
@@ -189,26 +189,6 @@ async function staleWhileRevalidate(request) {
     }
 
     return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
-}
-
-// ─── Background Sync ─────────────────────────────────────────
-
-self.addEventListener('sync', (event) => {
-    if (event.tag === 'sync-notes') {
-        console.log('[Munin SW] Background sync triggered');
-        event.waitUntil(syncNotes());
-    }
-});
-
-async function syncNotes() {
-    try {
-        // Get pending sync data from IndexedDB or cache
-        // This would sync notes with GitHub Gists when connection is restored
-        console.log('[Munin SW] Notes sync completed');
-    } catch (error) {
-        console.error('[Munin SW] Notes sync failed:', error);
-        throw error; // Re-throw to retry sync
-    }
 }
 
 // ─── Message Handling ────────────────────────────────────────

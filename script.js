@@ -2,6 +2,12 @@ import { initAuth, handleGoogleSignIn, retrieveKeys, saveKeys, getCurrentAuth, h
 import { loadNotes, saveNote, deleteNote as deleteNoteFromDB, loadFolders, saveFolders } from './lib/supabase-data.js';
 import { initializeFeatures } from './features-integration.js';
 
+function esc(str) {
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+}
+
 function debounce(func, delay) {
     let timeout;
     return function (...args) {
@@ -175,7 +181,7 @@ function initializeFeaturesLater() {
                     renderNotes();
                     renderTags();
                 },
-                saveToGist: () => saveNotesToGist()
+                saveData: () => saveData()
             };
 
             window.muninFeatures = initializeFeatures(state, elements, functions);
@@ -1262,7 +1268,7 @@ function renderFolders() {
 
         const nameSpan = document.createElement('span');
         nameSpan.className = 'folder-name';
-        nameSpan.innerHTML = `<i class="fas fa-folder"></i> ${folder}`;
+        nameSpan.innerHTML = `<i class="fas fa-folder"></i> ${esc(folder)}`;
 
         const actionsDiv = document.createElement('div');
         actionsDiv.className = 'folder-actions';
@@ -1380,15 +1386,15 @@ function renderNotes(notesToShow = null, animate = true) {
             const preview = note.content.substring(0, 150).replace(/[#*`]/g, '');
 
             const tagsHTML = (note.tags && note.tags.length > 0)
-                ? `<div class="note-card-tags">${note.tags.slice().sort((a, b) => a.localeCompare(b)).map(tag => `<span class="note-card-tag">${tag}</span>`).join('')}</div>`
+                ? `<div class="note-card-tags">${note.tags.slice().sort((a, b) => a.localeCompare(b)).map(tag => `<span class="note-card-tag">${esc(tag)}</span>`).join('')}</div>`
                 : '';
 
             noteCard.innerHTML = `
-                <h3>${note.title}</h3>
-                <p>${preview}${note.content.length > 150 ? '...' : ''}</p>
+                <h3>${esc(note.title)}</h3>
+                <p>${esc(preview)}${note.content.length > 150 ? '...' : ''}</p>
                 ${tagsHTML}
                 <div class="note-meta">
-                    <span><i class="fas fa-folder"></i> ${note.folder}</span>
+                    <span><i class="fas fa-folder"></i> ${esc(note.folder)}</span>
                     <span><i class="fas fa-clock"></i> ${formatDate(note.modified)}</span>
                 </div>
             `;
@@ -1445,13 +1451,13 @@ function renderNotes(notesToShow = null, animate = true) {
             noteListItem.addEventListener('dragend', handleDragEnd);
 
             const tagsHTML = (note.tags && note.tags.length > 0)
-                ? note.tags.slice().sort((a, b) => a.localeCompare(b)).join(', ')
+                ? note.tags.slice().sort((a, b) => a.localeCompare(b)).map(t => esc(t)).join(', ')
                 : '';
 
             noteListItem.innerHTML = `
-                <span class="note-list-item-title">${note.title}</span>
+                <span class="note-list-item-title">${esc(note.title)}</span>
                 <span class="note-list-item-tags">${tagsHTML}</span>
-                <span class="note-list-item-folder">${note.folder}</span>
+                <span class="note-list-item-folder">${esc(note.folder)}</span>
                 <span class="note-list-item-modified">${formatDate(note.modified)}</span>
             `;
 
@@ -1800,7 +1806,7 @@ function openTemplateModal() {
         const templateCard = document.createElement('div');
         templateCard.className = 'template-card';
         // Use a generic icon for templates for now, can be improved later
-        templateCard.innerHTML = `<i class="fas fa-paste"></i><h4>${template.title}</h4>`;
+        templateCard.innerHTML = `<i class="fas fa-paste"></i><h4>${esc(template.title)}</h4>`;
         templateCard.onclick = () => {
             let newTitle = template.title.replace('Template', '').trim();
             if (newTitle === 'Meeting Minutes') {
@@ -2231,7 +2237,7 @@ function renderCustomMobileSelector() {
         state.folders.forEach(folder => {
             const opt = document.createElement('div');
             opt.className = 'custom-select-option';
-            opt.innerHTML = `<i class="fas fa-folder"></i> ${folder}`;
+            opt.innerHTML = `<i class="fas fa-folder"></i> ${esc(folder)}`;
             opt.onclick = () => { selectFolder(folder); toggleCustomMobileSelector(); };
             dropdown.appendChild(opt);
         });

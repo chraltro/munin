@@ -348,9 +348,9 @@ function setupImportModal(state, functions) {
                     functions.refreshUI();
                 }
 
-                // Save to gist
-                if (functions.saveToGist) {
-                    await functions.saveToGist();
+                // Persist to Supabase
+                if (functions.saveData) {
+                    await functions.saveData();
                 }
 
                 // Close modal after delay

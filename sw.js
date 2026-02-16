@@ -8,7 +8,7 @@
  * - CDN assets: Cache-first with 7-day TTL (fonts, libraries)
  */
 
-const CACHE_VERSION = 6;
+const CACHE_VERSION = 7;
 const STATIC_CACHE = `munin-static-v${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `munin-dynamic-v${CACHE_VERSION}`;
 

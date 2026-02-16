@@ -119,7 +119,7 @@
     for (let i = 0; i < notes.length; i += BATCH_SIZE) {
         const batch = notes.slice(i, i + BATCH_SIZE);
         const rows = batch.map(note => ({
-            id:          note.id,
+            id:          Math.floor(note.id),
             user_id:     userId,
             title:       note.title || '',
             content:     note.content || '',

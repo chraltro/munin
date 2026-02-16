@@ -8,7 +8,7 @@
  * - CDN assets: Cache-first with 7-day TTL (fonts, libraries)
  */
 
-const CACHE_VERSION = 3;
+const CACHE_VERSION = 4;
 const STATIC_CACHE = `munin-static-v${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `munin-dynamic-v${CACHE_VERSION}`;
 
@@ -32,7 +32,9 @@ const STATIC_CACHE_URLS = [
     './lib/errors.js',
     './lib/api-client.js',
     './lib/utils.js',
-    './lib/crypto.js',
+    './lib/supabase-config.js',
+    './lib/supabase-client.js',
+    './lib/supabase-data.js',
     './shared/theme.css',
     './logo.svg',
     './favicon.ico',
@@ -114,8 +116,8 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Strategy: Network-first for API calls (GitHub, Gemini)
-    if (url.hostname.includes('api.github.com') || url.hostname.includes('generativelanguage.googleapis.com')) {
+    // Strategy: Network-first for API calls (Supabase, Gemini, esm.sh)
+    if (url.hostname.includes('supabase.co') || url.hostname.includes('generativelanguage.googleapis.com') || url.hostname.includes('esm.sh')) {
         event.respondWith(networkFirst(event.request));
         return;
     }

@@ -1,4 +1,5 @@
-import { initAuth, handleGoogleSignIn, retrieveKeys, saveKeys, getCurrentAuth } from './munin-auth.js';
+import { initAuth, handleGoogleSignIn, retrieveKeys, saveKeys, getCurrentAuth, handleSignOut, getSession } from './munin-auth.js';
+import { loadNotes, saveNote, deleteNote as deleteNoteFromDB, loadFolders, saveFolders } from './lib/supabase-data.js';
 import { initializeFeatures } from './features-integration.js';
 
 function debounce(func, delay) {
@@ -29,7 +30,6 @@ let tagAutocomplete = {
 let state = {
     isAuthenticated: false,
     geminiKey: '',
-    githubToken: '',
     notes: [],
     folders: ['Prompts', 'Recipes'],
     currentFolder: 'All Notes',
@@ -37,8 +37,6 @@ let state = {
     allTags: [],
     isTagListExpanded: false,
     currentNote: null,
-    gistId: null,
-    gistOwner: null,
     isNoteDirty: false,
     isEmbeddingStale: false,
     originalNoteContent: '',
@@ -64,11 +62,8 @@ let userPreferences = {
 const elements = {
     loginScreen: document.getElementById('loginScreen'),
     mainApp: document.getElementById('mainApp'),
-    loginForm: document.getElementById('loginForm'),
     manualForm: document.getElementById('manualForm'),
-    passwordInput: document.getElementById('password'),
     geminiKeyInput: document.getElementById('geminiKey'),
-    githubTokenInput: document.getElementById('githubToken'),
     googleSignInBtn: document.getElementById('googleSignInBtn'),
     showManualBtn: document.getElementById('showManualBtn'),
     oauthFlow: document.getElementById('oauthFlow'),
@@ -79,7 +74,6 @@ const elements = {
     settingsModal: document.getElementById('settingsModal'),
     settingsForm: document.getElementById('settingsForm'),
     settingsGeminiKey: document.getElementById('settingsGeminiKey'),
-    settingsGithubToken: document.getElementById('settingsGithubToken'),
     settingsSaveBtn: document.getElementById('settingsSaveBtn'),
     settingsCancelBtn: document.getElementById('settingsCancelBtn'),
     closeSettingsModalBtn: document.getElementById('closeSettingsModalBtn'),
@@ -145,16 +139,21 @@ const elements = {
 document.addEventListener('DOMContentLoaded', initializeApp);
 
 async function initializeApp() {
-    migrateToMunin();
-    checkSecurityWarning();
     loadTheme();
     loadTypography();
     loadViewMode();
 
-    // Initialize Firebase auth
+    // Initialize Supabase
     await initAuth();
 
-    await checkAutoLogin();
+    // Check if this is an OAuth redirect return
+    const { session } = await getSession();
+    if (session) {
+        await handleOAuthReturn(session);
+    } else {
+        await checkAutoLogin();
+    }
+
     setupEventListeners();
 
     // Initialize new features (export, import, keyboard shortcuts, analytics)
@@ -184,54 +183,58 @@ function initializeFeaturesLater() {
     }, 1000);
 }
 
-function migrateToMunin() {
+async function handleOAuthReturn(session) {
     try {
-        const mappings = [
-            ['chrisidian_noteViewMode', 'munin_noteViewMode'],
-            ['chrisidian_auth', 'munin_auth'],
-            ['chrisidian_theme', 'munin_theme'],
-            ['chrisidian_typography', 'munin_typography']
-        ];
-        for (const [oldKey, newKey] of mappings) {
-            const oldVal = localStorage.getItem(oldKey);
-            const newVal = localStorage.getItem(newKey);
-            if (oldVal && !newVal) {
-                localStorage.setItem(newKey, oldVal);
-                // Keep old keys for now to avoid surprises; can be removed later
-            }
+        if (elements.loadingSpinner) elements.loadingSpinner.style.display = 'block';
+        if (elements.oauthFlow) elements.oauthFlow.style.display = 'none';
+        if (elements.loginStatus) {
+            elements.loginStatus.style.display = 'block';
+            elements.loginStatus.textContent = 'Signed in! Checking for saved keys...';
         }
-    } catch (e) {
-        console.warn('[Munin] Failed to migrate legacy storage keys:', e.message);
+
+        const keys = await retrieveKeys();
+
+        if (keys && keys.geminiKey) {
+            state.geminiKey = keys.geminiKey;
+            state.isAuthenticated = true;
+            localStorage.setItem('munin_auth', JSON.stringify({ geminiKey: keys.geminiKey }));
+            showMainApp();
+            await loadData();
+        } else {
+            // First time — need Gemini key
+            if (elements.loginStatus) elements.loginStatus.textContent = 'Welcome! Please enter your Gemini API key.';
+            if (elements.loadingSpinner) elements.loadingSpinner.style.display = 'none';
+            if (elements.manualForm) elements.manualForm.style.display = 'block';
+        }
+    } catch (error) {
+        console.error('OAuth return error:', error);
+        showError(error.message || 'Sign-in failed', 'loginError');
+        if (elements.loadingSpinner) elements.loadingSpinner.style.display = 'none';
+        if (elements.loginStatus) elements.loginStatus.style.display = 'none';
+        if (elements.oauthFlow) elements.oauthFlow.style.display = 'block';
     }
 }
+
 
 function saveViewMode() {
     localStorage.setItem('munin_noteViewMode', state.noteViewMode);
 }
 
 function loadViewMode() {
-    const savedMode = localStorage.getItem('munin_noteViewMode') || localStorage.getItem('chrisidian_noteViewMode');
+    const savedMode = localStorage.getItem('munin_noteViewMode');
     if (savedMode) {
         state.noteViewMode = savedMode;
     }
 }
 
-function checkSecurityWarning() {
-    if (APP_CONFIG.passwordHash === '7f72131af35c82819bb44f256e34419f381fdeb465b1727d153b58030fabbcb7') {
-        console.warn('⚠️ SECURITY WARNING: Using default password hash! Change it before deploying!');
-        const warning = document.getElementById('securityWarning');
-        if (warning) warning.style.display = 'flex';
-    }
-}
 
 async function checkAutoLogin() {
-    const savedAuth = localStorage.getItem('munin_auth') || localStorage.getItem('chrisidian_auth');
+    const savedAuth = localStorage.getItem('munin_auth');
     if (savedAuth) {
         try {
             const auth = JSON.parse(savedAuth);
             if (auth && auth.geminiKey) {
                 state.geminiKey = auth.geminiKey;
-                state.githubToken = auth.githubToken || '';
                 state.isAuthenticated = true;
                 showMainApp();
                 await loadData();
@@ -281,7 +284,6 @@ function updateSaveStatus(message, type = 'success') {
 }
 
 function setupEventListeners() {
-    if (elements.loginForm) elements.loginForm.addEventListener('submit', handleLogin);
     if (elements.manualForm) elements.manualForm.addEventListener('submit', handleManualLogin);
     if (elements.googleSignInBtn) elements.googleSignInBtn.addEventListener('click', handleGoogleSignInClick);
     if (elements.showManualBtn) elements.showManualBtn.addEventListener('click', showManualEntry);
@@ -450,34 +452,6 @@ function showNotification(message, type = 'info') {
     }, 3000);
 }
 
-async function handleLogin(e) {
-    e.preventDefault();
-    
-    const enteredPasswordHash = await hashPassword(elements.passwordInput.value);
-    if (enteredPasswordHash !== APP_CONFIG.passwordHash) {
-        showNotification('Invalid password!', 'error');
-        return;
-    }
-    
-    state.geminiKey = elements.geminiKeyInput.value;
-    state.githubToken = elements.githubTokenInput.value;
-    state.isAuthenticated = true;
-    
-    localStorage.setItem('munin_auth', JSON.stringify({
-        geminiKey: state.geminiKey,
-        githubToken: state.githubToken
-    }));
-    
-    showMainApp();
-    await loadData();
-}
-
-async function hashPassword(password) {
-    const msgUint8 = new TextEncoder().encode(password);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
 
 function showManualEntry() {
     if (elements.oauthFlow) elements.oauthFlow.style.display = 'none';
@@ -490,39 +464,12 @@ async function handleGoogleSignInClick() {
         if (elements.oauthFlow) elements.oauthFlow.style.display = 'none';
         if (elements.loginStatus) {
             elements.loginStatus.style.display = 'block';
-            elements.loginStatus.textContent = 'Signing in with Google...';
+            elements.loginStatus.textContent = 'Redirecting to Google...';
         }
         hideError('loginError');
 
+        // This redirects the browser — we won't reach the next line.
         await handleGoogleSignIn();
-        if (elements.loginStatus) elements.loginStatus.textContent = 'Checking for saved keys...';
-
-        // Try to retrieve saved keys from Firebase
-        const keys = await retrieveKeys();
-
-        if (keys && keys.geminiKey) {
-            // Keys found - auto login
-            state.geminiKey = keys.geminiKey;
-            state.githubToken = keys.githubToken;
-            if (elements.loginStatus) elements.loginStatus.textContent = 'Keys found! Signing you in...';
-
-            // Also save to localStorage for faster future logins
-            localStorage.setItem('munin_auth', JSON.stringify({
-                geminiKey: keys.geminiKey,
-                githubToken: keys.githubToken
-            }));
-
-            setTimeout(() => {
-                state.isAuthenticated = true;
-                showMainApp();
-                loadData();
-            }, 500);
-        } else {
-            // First time - need to enter keys
-            if (elements.loginStatus) elements.loginStatus.textContent = 'Welcome! Please enter your API keys to get started.';
-            if (elements.loadingSpinner) elements.loadingSpinner.style.display = 'none';
-            if (elements.manualForm) elements.manualForm.style.display = 'block';
-        }
     } catch (error) {
         console.error('Sign-in error:', error);
         showError(error.message || 'Sign-in failed', 'loginError');
@@ -536,7 +483,6 @@ async function handleManualLogin(e) {
     if (e) e.preventDefault();
 
     const geminiKey = elements.geminiKeyInput.value.trim();
-    const githubToken = elements.githubTokenInput.value.trim();
 
     if (!geminiKey) {
         showError('Please enter a Gemini API key', 'loginError');
@@ -548,7 +494,7 @@ async function handleManualLogin(e) {
         if (elements.manualForm) elements.manualForm.style.display = 'none';
         if (elements.loginStatus) {
             elements.loginStatus.style.display = 'block';
-            elements.loginStatus.textContent = 'Validating keys...';
+            elements.loginStatus.textContent = 'Validating key...';
         }
         hideError('loginError');
 
@@ -556,26 +502,20 @@ async function handleManualLogin(e) {
         const testResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${geminiKey}`);
         if (!testResponse.ok) throw new Error('Invalid Gemini API key');
 
-        if (elements.loginStatus) elements.loginStatus.textContent = 'Saving keys...';
+        if (elements.loginStatus) elements.loginStatus.textContent = 'Saving key...';
 
-        // Save to Firebase if user is signed in
-        const auth = getCurrentAuth();
+        // Save to Supabase if user is signed in
+        const auth = await getCurrentAuth();
         if (auth.googleUser) {
-            await saveKeys(geminiKey, githubToken || null);
-            if (elements.loginStatus) elements.loginStatus.textContent = 'Keys saved and synced!';
+            await saveKeys(geminiKey);
+            if (elements.loginStatus) elements.loginStatus.textContent = 'Key saved and synced!';
         } else {
-            // Fallback to localStorage only
-            if (elements.loginStatus) elements.loginStatus.textContent = 'Keys saved locally';
+            if (elements.loginStatus) elements.loginStatus.textContent = 'Key saved locally';
         }
 
-        // Always save to localStorage for quick access
-        localStorage.setItem('munin_auth', JSON.stringify({
-            geminiKey,
-            githubToken
-        }));
+        localStorage.setItem('munin_auth', JSON.stringify({ geminiKey }));
 
         state.geminiKey = geminiKey;
-        state.githubToken = githubToken;
         state.isAuthenticated = true;
 
         setTimeout(() => {
@@ -591,9 +531,7 @@ async function handleManualLogin(e) {
 }
 
 function openSettings() {
-    // Pre-fill current values
     if (elements.settingsGeminiKey) elements.settingsGeminiKey.value = state.geminiKey || '';
-    if (elements.settingsGithubToken) elements.settingsGithubToken.value = state.githubToken || '';
     if (elements.settingsModal) elements.settingsModal.style.display = 'flex';
     hideError('settingsError');
     if (elements.settingsStatus) elements.settingsStatus.style.display = 'none';
@@ -607,7 +545,6 @@ async function handleSettingsSave(e) {
     e.preventDefault();
 
     const geminiKey = elements.settingsGeminiKey.value.trim();
-    const githubToken = elements.settingsGithubToken.value.trim();
 
     if (!geminiKey) {
         showError('Gemini API key is required', 'settingsError');
@@ -617,34 +554,25 @@ async function handleSettingsSave(e) {
     try {
         if (elements.settingsStatus) {
             elements.settingsStatus.style.display = 'block';
-            elements.settingsStatus.textContent = 'Validating keys...';
+            elements.settingsStatus.textContent = 'Validating key...';
         }
         hideError('settingsError');
 
-        // Validate Gemini key
         const testResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${geminiKey}`);
         if (!testResponse.ok) throw new Error('Invalid Gemini API key');
 
-        if (elements.settingsStatus) elements.settingsStatus.textContent = 'Saving keys...';
+        if (elements.settingsStatus) elements.settingsStatus.textContent = 'Saving key...';
 
-        // Save to Firebase if user is signed in
-        const auth = getCurrentAuth();
+        const auth = await getCurrentAuth();
         if (auth.googleUser) {
-            await saveKeys(geminiKey, githubToken || null);
-            if (elements.settingsStatus) elements.settingsStatus.textContent = 'Keys saved and synced to Firebase!';
+            await saveKeys(geminiKey);
+            if (elements.settingsStatus) elements.settingsStatus.textContent = 'Key saved and synced!';
         } else {
-            if (elements.settingsStatus) elements.settingsStatus.textContent = 'Keys saved locally';
+            if (elements.settingsStatus) elements.settingsStatus.textContent = 'Key saved locally';
         }
 
-        // Always save to localStorage
-        localStorage.setItem('munin_auth', JSON.stringify({
-            geminiKey,
-            githubToken
-        }));
-
-        // Update state
+        localStorage.setItem('munin_auth', JSON.stringify({ geminiKey }));
         state.geminiKey = geminiKey;
-        state.githubToken = githubToken;
 
         setTimeout(() => {
             closeSettings();
@@ -675,16 +603,19 @@ function hideError(elementId) {
     }
 }
 
-function handleLogout() {
+async function handleLogout() {
     localStorage.removeItem('munin_auth');
+    await handleSignOut();
     state.isAuthenticated = false;
     state.geminiKey = '';
-    state.githubToken = '';
+    state.notes = [];
+    state.folders = ['Prompts', 'Recipes'];
     elements.loginScreen.style.display = 'flex';
     elements.mainApp.style.display = 'none';
-    if (elements.passwordInput) elements.passwordInput.value = '';
-    elements.geminiKeyInput.value = '';
-    elements.githubTokenInput.value = '';
+    if (elements.geminiKeyInput) elements.geminiKeyInput.value = '';
+    if (elements.oauthFlow) elements.oauthFlow.style.display = 'block';
+    if (elements.manualForm) elements.manualForm.style.display = 'none';
+    if (elements.loginStatus) elements.loginStatus.style.display = 'none';
 }
 
 function showMainApp() {
@@ -884,12 +815,7 @@ function toggleEditorHeader() {
 }
 
 function showHistory() {
-    if (state.gistOwner && state.gistId) {
-        const url = `https://gist.github.com/${state.gistOwner}/${state.gistId}/revisions`;
-        window.open(url, '_blank');
-    } else {
-        showNotification('Gist history is not available yet.', 'info');
-    }
+    showNotification('Note history coming soon!', 'info');
 }
 
 async function testGeminiAPI() {
@@ -910,64 +836,23 @@ async function testGeminiAPI() {
 async function loadData() {
     try {
         updateSaveStatus('Loading...', 'saving');
-        
-        const response = await fetch('https://api.github.com/gists', {
-            headers: {
-                'Authorization': `token ${state.githubToken}`,
-                'Accept': 'application/vnd.github.v3+json'
-            }
+
+        // Load notes and folders from Supabase in parallel
+        const [notes, folders] = await Promise.all([
+            loadNotes(),
+            loadFolders()
+        ]);
+
+        state.notes = notes;
+        if (folders.length > 0) {
+            state.folders = folders;
+        }
+
+        state.notes.forEach(note => {
+            if (!note.tags) note.tags = [];
         });
-        
-        if (!response.ok) {
-            if (response.status === 403) {
-                throw new Error('GitHub token needs "gist" permission. Go to GitHub Settings > Developer settings > Personal access tokens > Select your token > Edit > Check "gist" scope');
-            }
-            throw new Error(`GitHub API error: ${response.statusText}`);
-        }
-        
-            const gistsList = await response.json();
-            const LEGACY_MAIN = 'chrisidian-notes.json';
-            const LEGACY_EMB = 'chrisidian-notes-embeddings.json';
-            const existingGist = gistsList.find(g => g.files && (g.files[APP_CONFIG.gistFilename] || g.files[LEGACY_MAIN]));
-        
-        if (existingGist) {
-            state.gistId = existingGist.id;
-            state.gistOwner = existingGist.owner.login;
-            const gistData = await fetch(`https://api.github.com/gists/${state.gistId}`, {
-                headers: {
-                    'Authorization': `token ${state.githubToken}`,
-                    'Accept': 'application/vnd.github.v3+json'
-                }
-            });
-            
-            const data = await gistData.json();
-            const mainFile = data.files[APP_CONFIG.gistFilename] || data.files[LEGACY_MAIN];
-            const mainContent = JSON.parse(mainFile.content);
-            state.notes = mainContent.notes || [];
-            state.folders = mainContent.folders || state.folders;
+        updateAllTags();
 
-            let embeddings = {};
-            const embFile = data.files[APP_CONFIG.embeddingFilename] || data.files[LEGACY_EMB];
-            if (embFile) {
-                embeddings = JSON.parse(embFile.content);
-            }
-
-            // Ensure all notes have a tags array and merge embeddings
-            state.notes.forEach(note => {
-                if (!note.tags) {
-                    note.tags = [];
-                }
-                // If embeddings file exists, use it as source of truth.
-                // Otherwise, legacy embeddings might be on the note object itself.
-                if (embeddings[note.id]) {
-                    note.embedding = embeddings[note.id];
-                }
-            });
-            updateAllTags();
-        } else {
-            await saveData();
-        }
-        
         renderFolders();
         renderTags();
         renderNotes();
@@ -982,76 +867,11 @@ async function loadData() {
 
 async function saveData() {
     try {
-        const embeddingsToSave = {};
-        const notesToSave = state.notes.map(note => {
-            if (note.embedding && note.embedding.length > 0) {
-                embeddingsToSave[note.id] = note.embedding;
-            }
-            // Create a new object without the embedding property
-            const { embedding, ...noteWithoutEmbedding } = note;
-            return noteWithoutEmbedding;
-        });
-
-        const mainData = {
-            notes: notesToSave,
-            folders: state.folders,
-            lastUpdated: new Date().toISOString()
-        };
-        
-        const gistData = {
-            files: {
-                [APP_CONFIG.gistFilename]: {
-                    content: JSON.stringify(mainData, null, 2)
-                },
-                [APP_CONFIG.embeddingFilename]: {
-                    content: JSON.stringify(embeddingsToSave, null, 2)
-                }
-            },
-            public: false
-        };
-        
-        if (state.gistId) {
-            const response = await fetch(`https://api.github.com/gists/${state.gistId}`, {
-                method: 'PATCH',
-                headers: {
-                    'Authorization': `token ${state.githubToken}`,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(gistData)
-            });
-            
-            if (!response.ok) {
-                const error = await response.json();
-                if (response.status === 403) {
-                    throw new Error('GitHub token needs "gist" permission. Go to GitHub Settings > Developer settings > Personal access tokens > Select your token > Edit > Check "gist" scope');
-                }
-                throw new Error(`GitHub API error: ${error.message || response.statusText}`);
-            }
-        } else {
-            gistData.description = 'Munin Notes Data';
-            const response = await fetch('https://api.github.com/gists', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `token ${state.githubToken}`,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(gistData)
-            });
-            
-            if (!response.ok) {
-                const error = await response.json();
-                if (response.status === 403) {
-                    throw new Error('GitHub token needs "gist" permission. Go to GitHub Settings > Developer settings > Personal access tokens > Select your token > Edit > Check "gist" scope');
-                }
-                throw new Error(`GitHub API error: ${error.message || response.statusText}`);
-            }
-            
-            const result = await response.json();
-            state.gistId = result.id;
-            state.gistOwner = result.owner.login;
-        }
+        // Save all notes and folders to Supabase
+        await Promise.all([
+            ...state.notes.map(note => saveNote(note)),
+            saveFolders(state.folders)
+        ]);
     } catch (error) {
         console.error('Error saving data:', error);
         throw error;
@@ -1104,9 +924,10 @@ async function callEmbeddingAPI(text) {
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${APP_CONFIG.embeddingModel}:embedContent?key=${state.geminiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                model: `models/${APP_CONFIG.embeddingModel}`, 
-                content: { parts: [{ text }] } 
+            body: JSON.stringify({
+                model: `models/${APP_CONFIG.embeddingModel}`,
+                content: { parts: [{ text }] },
+                outputDimensionality: 768
             })
         });
         
@@ -2052,7 +1873,7 @@ function openNote(note) {
     }
 
     state.currentNote = note;
-    elements.historyBtn.disabled = !(state.gistOwner && state.gistId);
+    elements.historyBtn.disabled = true;
     elements.noteTitle.value = note.title;
     renderNoteTags();
     elements.noteEditor.value = note.content;
@@ -2219,11 +2040,12 @@ async function saveCurrentNote(regenerateEmbedding = false) {
 
 async function deleteCurrentNote() {
     if (!state.currentNote) return;
-    
+
     if (!confirm('Are you sure you want to delete this note?')) return;
-    
-    state.notes = state.notes.filter(n => n.id !== state.currentNote.id);
-    await saveData();
+
+    const noteId = state.currentNote.id;
+    state.notes = state.notes.filter(n => n.id !== noteId);
+    await deleteNoteFromDB(noteId);
     updateAllTags();
     renderTags();
     renderNotes();
